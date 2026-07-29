@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -19,6 +19,8 @@
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lenis Smooth Scroll CDN -->
+    <script src="https://unpkg.com/lenis@1.1.9/dist/lenis.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -43,6 +45,12 @@
     </script>
     <style>
       html { scroll-behavior: smooth; }
+      html.lenis, html.lenis body { height: auto; }
+      .lenis.lenis-smooth { scroll-behavior: auto !important; }
+      .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+      .lenis.lenis-stopped { overflow: hidden; }
+      .lenis.lenis-scrolling iframe { pointer-events: none; }
+
       body { background: #000; color: #fff; font-family: Manrope, sans-serif; -webkit-font-smoothing: antialiased; }
       h1, h2, h3, h4 { font-family: Sora, sans-serif; letter-spacing: -0.03em; }
       *, ::before, ::after { border-color: #27272a; }
@@ -53,6 +61,18 @@
       .radial-accent { background-image: radial-gradient(60% 50% at 50% 0%, rgba(0,240,255,.14) 0%, transparent 70%); }
       ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
+
+      /* Apple-style smooth reveal keyframes */
+      @keyframes apple-fade-up {
+        from {
+          opacity: 0;
+          transform: translateY(40px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
     </style>
   </head>
   <body>
@@ -63,7 +83,7 @@
     <script src="https://unpkg.com/@babel/standalone@7.22.20/babel.min.js"></script>
 
     <script type="text/babel" data-presets="react">
-      const { useState, useEffect, useMemo, useCallback, createContext, useContext } = React;
+      const { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext } = React;
 
       /* ============================================================
          1. ICONS (inline SVG, lucide-style)
@@ -106,7 +126,47 @@
       };
 
       /* ============================================================
-         2. MOCK DATA
+         2. SCROLL ANIMATION HELPER (Apple-style Intersection Observer)
+         ============================================================ */
+      function FadeIn({ children, className = "", delay = 0 }) {
+        const [isVisible, setIsVisible] = useState(false);
+        const ref = useRef(null);
+
+        useEffect(() => {
+          const el = ref.current;
+          if (!el) return;
+
+          const observer = new IntersectionObserver(
+            ([entry]) => {
+              if (entry.isIntersecting) {
+                setIsVisible(true);
+                observer.unobserve(el);
+              }
+            },
+            { threshold: 0.15 }
+          );
+
+          observer.observe(el);
+          return () => observer.disconnect();
+        }, []);
+
+        return (
+          <div
+            ref={ref}
+            style={{ transitionDelay: `${delay}ms` }}
+            className={cn(
+              "transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1)",
+              isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-10 scale-[0.97]",
+              className
+            )}
+          >
+            {children}
+          </div>
+        );
+      }
+
+      /* ============================================================
+         3. MOCK DATA
          ============================================================ */
       const PRICE_STANDARD = 300;
       const PRICE_VIP = 600;
@@ -254,7 +314,7 @@
       const cn = (...a) => a.filter(Boolean).join(" ");
 
       /* ============================================================
-         3. HASH ROUTER
+         4. HASH ROUTER
          ============================================================ */
       const RouterCtx = createContext({ path: "/", go: () => {} });
       const useRouter = () => useContext(RouterCtx);
@@ -293,7 +353,7 @@
       }
 
       /* ============================================================
-         4. BOOKING STATE (Context)
+         5. BOOKING STATE (Context)
          ============================================================ */
       const BookingCtx = createContext(null);
       const useBooking = () => useContext(BookingCtx);
@@ -333,7 +393,7 @@
       }
 
       /* ============================================================
-         5. LAYOUT — HEADER / FOOTER
+         6. LAYOUT — HEADER / FOOTER
          ============================================================ */
       const NAV = [
         { to: "/", label: "Films" },
@@ -496,7 +556,7 @@
       }
 
       /* ============================================================
-         6. COMPONENTS — HERO CAROUSEL / MOVIE CARD / SEAT MAP
+         7. COMPONENTS — HERO CAROUSEL / MOVIE CARD / SEAT MAP
          ============================================================ */
       function HeroCarousel({ movies }) {
         const [index, setIndex] = useState(0);
@@ -757,7 +817,7 @@
       );
 
       /* ============================================================
-         7. PAGE — HOME
+         8. PAGE — HOME
          ============================================================ */
       function HomePage() {
         const [tab, setTab] = useState("now");
@@ -770,71 +830,81 @@
 
             <section className="radial-accent">
               <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-                <div className="flex flex-wrap items-end justify-between gap-6">
-                  <div>
-                    <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cyan">
-                      <I.sparkles className="h-3.5 w-3.5" /> CMC · Addis Ababa
-                    </p>
-                    <h2 className="mt-3 text-4xl font-semibold sm:text-5xl">The programme</h2>
+                <FadeIn>
+                  <div className="flex flex-wrap items-end justify-between gap-6">
+                    <div>
+                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cyan">
+                        <I.sparkles className="h-3.5 w-3.5" /> CMC · Addis Ababa
+                      </p>
+                      <h2 className="mt-3 text-4xl font-semibold sm:text-5xl">The programme</h2>
+                    </div>
+                    <Link to="/schedule" className="group inline-flex items-center gap-2 text-sm text-muted hover:text-white">
+                      Full weekly timetable
+                      <I.arrow className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
                   </div>
-                  <Link to="/schedule" className="group inline-flex items-center gap-2 text-sm text-muted hover:text-white">
-                    Full weekly timetable
-                    <I.arrow className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </div>
+                </FadeIn>
 
-                <div className="mt-8 flex flex-wrap gap-1.5 rounded-full border bg-surface/60 p-1.5 sm:inline-flex">
-                  {CATEGORIES.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setTab(c.id)}
-                      className={cn(
-                        "rounded-full px-4 py-2 text-sm transition-all",
-                        tab === c.id
-                          ? "bg-cyan font-semibold text-black"
-                          : "text-muted hover:bg-white/5 hover:text-white"
-                      )}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+                <FadeIn delay={100}>
+                  <div className="mt-8 flex flex-wrap gap-1.5 rounded-full border bg-surface/60 p-1.5 sm:inline-flex">
+                    {CATEGORIES.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setTab(c.id)}
+                        className={cn(
+                          "rounded-full px-4 py-2 text-sm transition-all",
+                          tab === c.id
+                            ? "bg-cyan font-semibold text-black"
+                            : "text-muted hover:bg-white/5 hover:text-white"
+                        )}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </FadeIn>
 
                 <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
-                  {list.map((m) => <MovieCard key={m.id} movie={m} />)}
+                  {list.map((m, idx) => (
+                    <FadeIn key={m.id} delay={(idx % 4) * 100}>
+                      <MovieCard movie={m} />
+                    </FadeIn>
+                  ))}
                 </div>
               </div>
             </section>
 
             <section className="mx-auto max-w-7xl px-5 pb-8 sm:px-8">
-              <div className="relative overflow-hidden rounded-4xl border">
-                <img
-                  src={U("1489599849927-2ee91cede3ba", 2000)}
-                  alt="Gast Cinema auditorium"
-                  loading="lazy"
-                  className="h-[360px] w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
-                <div className="absolute inset-0 flex flex-col justify-center gap-4 p-8 sm:p-14">
-                  <h3 className="max-w-md text-3xl font-semibold sm:text-4xl">
-                    Four halls. One obsessive standard.
-                  </h3>
-                  <p className="max-w-md text-sm text-muted sm:text-base">
-                    4K laser projection, Dolby Atmos in every hall, and VIP couches with in-seat
-                    concession service.
-                  </p>
-                  <Link to="/experience" className="glass w-fit rounded-full border px-5 py-2.5 text-sm font-medium hover:bg-white/10">
-                    Explore the experience
-                  </Link>
+              <FadeIn>
+                <div className="relative overflow-hidden rounded-4xl border">
+                  <img
+                    src={U("1489599849927-2ee91cede3ba", 2000)}
+                    alt="Gast Cinema auditorium"
+                    loading="lazy"
+                    className="h-[360px] w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+                  <div className="absolute inset-0 flex flex-col justify-center gap-4 p-8 sm:p-14">
+                    <h3 className="max-w-md text-3xl font-semibold sm:text-4xl">
+                      Four halls. One obsessive standard.
+                    </h3>
+                    <p className="max-w-md text-sm text-muted sm:text-base">
+                      4K laser projection, Dolby Atmos in every hall, and VIP couches with in-seat
+                      concession service.
+                    </p>
+                    <Link to="/experience" className="glass w-fit rounded-full border px-5 py-2.5 text-sm font-medium hover:bg-white/10">
+                      Explore the experience
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              </FadeIn>
             </section>
           </React.Fragment>
         );
       }
 
       /* ============================================================
-         8. PAGE — MOVIE DETAIL + SEAT BOOKING ENGINE
+         9. PAGE — MOVIE DETAIL + SEAT BOOKING ENGINE
          ============================================================ */
       function MoviePage({ id }) {
         const movie = getMovie(id);
@@ -881,81 +951,87 @@
             </section>
 
             <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
-              <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr]">
-                <div>
-                  <h2 className="text-xl font-semibold">Synopsis</h2>
-                  <p className="mt-3 leading-relaxed text-muted">{movie.synopsis}</p>
+              <FadeIn>
+                <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr]">
+                  <div>
+                    <h2 className="text-xl font-semibold">Synopsis</h2>
+                    <p className="mt-3 leading-relaxed text-muted">{movie.synopsis}</p>
+                  </div>
+                  <dl className="space-y-4 rounded-3xl border bg-surface/60 p-6 text-sm">
+                    <Row label="Director" value={movie.director} />
+                    <Row label="Cast" value={movie.cast.join(", ")} />
+                    <Row label="Genre" value={movie.genres.join(" · ")} />
+                    <Row label="Audio" value={movie.language + " · Dolby Atmos"} />
+                    <Row label="Subtitles" value={movie.subtitles} />
+                  </dl>
                 </div>
-                <dl className="space-y-4 rounded-3xl border bg-surface/60 p-6 text-sm">
-                  <Row label="Director" value={movie.director} />
-                  <Row label="Cast" value={movie.cast.join(", ")} />
-                  <Row label="Genre" value={movie.genres.join(" · ")} />
-                  <Row label="Audio" value={movie.language + " · Dolby Atmos"} />
-                  <Row label="Subtitles" value={movie.subtitles} />
-                </dl>
-              </div>
+              </FadeIn>
             </section>
 
             <section className="mx-auto max-w-7xl px-5 sm:px-8">
-              <h2 className="text-3xl font-semibold sm:text-4xl">Choose your seats</h2>
+              <FadeIn>
+                <h2 className="text-3xl font-semibold sm:text-4xl">Choose your seats</h2>
 
-              {movie.showtimes.length === 0 ? (
-                <p className="mt-4 text-sm text-muted">
-                  {movie.releaseNote || "Booking opens closer to release."} Follow our Telegram
-                  channel to be notified when tickets go live.
-                </p>
-              ) : (
-                <React.Fragment>
-                  <p className="mt-2 text-sm text-muted">
-                    Standard {PRICE_STANDARD} ETB · VIP couch {PRICE_VIP} ETB
+                {movie.showtimes.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted">
+                    {movie.releaseNote || "Booking opens closer to release."} Follow our Telegram
+                    channel to be notified when tickets go live.
                   </p>
+                ) : (
+                  <React.Fragment>
+                    <p className="mt-2 text-sm text-muted">
+                      Standard {PRICE_STANDARD} ETB · VIP couch {PRICE_VIP} ETB
+                    </p>
 
-                  <div className="mt-6 flex flex-wrap gap-2.5">
-                    {movie.showtimes.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setShowtime(s.id)}
-                        className={cn(
-                          "rounded-2xl border px-4 py-3 text-left transition-all",
-                          showtimeId === s.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
-                        )}
-                      >
-                        <span className={cn("block text-sm font-semibold", showtimeId === s.id && "text-cyan")}>
-                          {s.time}
-                        </span>
-                        <span className="text-[11px] text-muted">{s.hall} · {s.format}</span>
-                      </button>
-                    ))}
-                  </div>
+                    <div className="mt-6 flex flex-wrap gap-2.5">
+                      {movie.showtimes.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => setShowtime(s.id)}
+                          className={cn(
+                            "rounded-2xl border px-4 py-3 text-left transition-all",
+                            showtimeId === s.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
+                          )}
+                        >
+                          <span className={cn("block text-sm font-semibold", showtimeId === s.id && "text-cyan")}>
+                            {s.time}
+                          </span>
+                          <span className="text-[11px] text-muted">{s.hall} · {s.format}</span>
+                        </button>
+                      ))}
+                    </div>
 
-                  <div className="mt-8">
-                    {active ? (
-                      <SeatMap showtimeId={active.id} />
-                    ) : (
-                      <div className="rounded-3xl border border-dashed bg-surface/30 p-14 text-center text-sm text-muted">
-                        Select a showtime above to open the seat map.
-                      </div>
-                    )}
-                  </div>
-                </React.Fragment>
-              )}
+                    <div className="mt-8">
+                      {active ? (
+                        <SeatMap showtimeId={active.id} />
+                      ) : (
+                        <div className="rounded-3xl border border-dashed bg-surface/30 p-14 text-center text-sm text-muted">
+                          Select a showtime above to open the seat map.
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                )}
+              </FadeIn>
             </section>
 
             <section className="mx-auto max-w-7xl px-5 pt-20 sm:px-8">
-              <h2 className="text-2xl font-semibold">More at Gast</h2>
-              <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                {related.map((m) => (
-                  <Link key={m.id} to={"/movies/" + m.id} className="group overflow-hidden rounded-2xl border bg-surface">
-                    <img
-                      src={m.poster}
-                      alt={m.title}
-                      loading="lazy"
-                      className="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <p className="p-3 text-sm font-medium">{m.title}</p>
-                  </Link>
-                ))}
-              </div>
+              <FadeIn>
+                <h2 className="text-2xl font-semibold">More at Gast</h2>
+                <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+                  {related.map((m) => (
+                    <Link key={m.id} to={"/movies/" + m.id} className="group overflow-hidden rounded-2xl border bg-surface">
+                      <img
+                        src={m.poster}
+                        alt={m.title}
+                        loading="lazy"
+                        className="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <p className="p-3 text-sm font-medium">{m.title}</p>
+                    </Link>
+                  ))}
+                </div>
+              </FadeIn>
             </section>
 
             {seats.length > 0 && active && (
@@ -1014,7 +1090,7 @@
       }
 
       /* ============================================================
-         9. PAGE — SCHEDULE
+         10. PAGE — SCHEDULE
          ============================================================ */
       function SchedulePage() {
         const [day, setDay] = useState(DAYS[2].id);
@@ -1023,51 +1099,55 @@
         return (
           <div className="radial-accent">
             <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan">Timetable</p>
-              <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">This week at Gast</h1>
-              <p className="mt-4 max-w-xl text-muted">
-                Four halls, seven days. Tap any showtime to jump straight into the seat map.
-              </p>
+              <FadeIn>
+                <p className="text-xs uppercase tracking-[0.2em] text-cyan">Timetable</p>
+                <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">This week at Gast</h1>
+                <p className="mt-4 max-w-xl text-muted">
+                  Four halls, seven days. Tap any showtime to jump straight into the seat map.
+                </p>
 
-              <div className="mt-10 flex gap-2 overflow-x-auto pb-2">
-                {DAYS.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => setDay(d.id)}
-                    className={cn(
-                      "min-w-[86px] rounded-2xl border px-4 py-3 text-center transition-all",
-                      day === d.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
-                    )}
-                  >
-                    <span className={cn("block text-sm font-semibold", day === d.id && "text-cyan")}>{d.label}</span>
-                    <span className="text-[11px] text-muted">{d.date}</span>
-                  </button>
-                ))}
-              </div>
+                <div className="mt-10 flex gap-2 overflow-x-auto pb-2">
+                  {DAYS.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setDay(d.id)}
+                      className={cn(
+                        "min-w-[86px] rounded-2xl border px-4 py-3 text-center transition-all",
+                        day === d.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
+                      )}
+                    >
+                      <span className={cn("block text-sm font-semibold", day === d.id && "text-cyan")}>{d.label}</span>
+                      <span className="text-[11px] text-muted">{d.date}</span>
+                    </button>
+                  ))}
+                </div>
+              </FadeIn>
 
               <div className="mt-10 divide-y overflow-hidden rounded-3xl border bg-surface/50">
-                {showing.map((m) => (
-                  <div key={m.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-                    <Link to={"/movies/" + m.id} className="flex min-w-0 flex-1 items-center gap-4">
-                      <img src={m.poster} alt={m.title} loading="lazy" className="h-16 w-16 rounded-xl border object-cover" />
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{m.title}</p>
-                        <p className="text-xs text-muted">{m.runtime} · {m.language} · {m.ageRating}</p>
+                {showing.map((m, idx) => (
+                  <FadeIn key={m.id} delay={idx * 80}>
+                    <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+                      <Link to={"/movies/" + m.id} className="flex min-w-0 flex-1 items-center gap-4">
+                        <img src={m.poster} alt={m.title} loading="lazy" className="h-16 w-16 rounded-xl border object-cover" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{m.title}</p>
+                          <p className="text-xs text-muted">{m.runtime} · {m.language} · {m.ageRating}</p>
+                        </div>
+                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        {m.showtimes.map((s) => (
+                          <Link
+                            key={s.id}
+                            to={"/movies/" + m.id}
+                            className="rounded-xl border bg-surface2 px-3 py-2 text-xs transition-colors hover:border-cyan/60 hover:text-cyan"
+                          >
+                            <span className="font-medium">{s.time}</span>
+                            <span className="ml-2 text-muted">{s.hall}</span>
+                          </Link>
+                        ))}
                       </div>
-                    </Link>
-                    <div className="flex flex-wrap gap-2">
-                      {m.showtimes.map((s) => (
-                        <Link
-                          key={s.id}
-                          to={"/movies/" + m.id}
-                          className="rounded-xl border bg-surface2 px-3 py-2 text-xs transition-colors hover:border-cyan/60 hover:text-cyan"
-                        >
-                          <span className="font-medium">{s.time}</span>
-                          <span className="ml-2 text-muted">{s.hall}</span>
-                        </Link>
-                      ))}
                     </div>
-                  </div>
+                  </FadeIn>
                 ))}
               </div>
             </div>
@@ -1076,7 +1156,7 @@
       }
 
       /* ============================================================
-         10. PAGE — EXPERIENCE
+         11. PAGE — EXPERIENCE
          ============================================================ */
       const FEATURES = [
         {
@@ -1111,59 +1191,65 @@
         return (
           <div className="radial-accent">
             <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan">The experience</p>
-              <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">
-                Engineered so the room disappears.
-              </h1>
-              <p className="mt-5 max-w-xl text-muted">
-                Everything at Gast Cinema is tuned around one idea: the moment the lights drop, you
-                should forget you're in CMC at all.
-              </p>
+              <FadeIn>
+                <p className="text-xs uppercase tracking-[0.2em] text-cyan">The experience</p>
+                <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">
+                  Engineered so the room disappears.
+                </h1>
+                <p className="mt-5 max-w-xl text-muted">
+                  Everything at Gast Cinema is tuned around one idea: the moment the lights drop, you
+                  should forget you're in CMC at all.
+                </p>
+              </FadeIn>
 
               <div className="mt-14 space-y-6">
                 {FEATURES.map((f, i) => (
-                  <div key={f.title} className="grid gap-6 overflow-hidden rounded-4xl border bg-surface/50 md:grid-cols-2">
-                    <img
-                      src={f.image}
-                      alt={f.title}
-                      loading="lazy"
-                      className={cn("h-72 w-full object-cover md:h-full", i % 2 === 1 && "md:order-2")}
-                    />
-                    <div className="flex flex-col justify-center gap-4 p-8 sm:p-12">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
-                        <f.icon className="h-5 w-5" />
-                      </span>
-                      <h2 className="text-3xl font-semibold">{f.title}</h2>
-                      <p className="leading-relaxed text-muted">{f.body}</p>
+                  <FadeIn key={f.title} delay={i * 100}>
+                    <div className="grid gap-6 overflow-hidden rounded-4xl border bg-surface/50 md:grid-cols-2">
+                      <img
+                        src={f.image}
+                        alt={f.title}
+                        loading="lazy"
+                        className={cn("h-72 w-full object-cover md:h-full", i % 2 === 1 && "md:order-2")}
+                      />
+                      <div className="flex flex-col justify-center gap-4 p-8 sm:p-12">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                          <f.icon className="h-5 w-5" />
+                        </span>
+                        <h2 className="text-3xl font-semibold">{f.title}</h2>
+                        <p className="leading-relaxed text-muted">{f.body}</p>
+                      </div>
                     </div>
-                  </div>
+                  </FadeIn>
                 ))}
               </div>
 
-              <div className="mt-16 rounded-4xl border bg-surface/50 p-8 sm:p-12">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-crimson/15 text-crimson ring-1 ring-crimson/30">
-                  <I.popcorn className="h-5 w-5" />
-                </span>
-                <h2 className="mt-5 text-3xl font-semibold">Snacks & concessions</h2>
-                <p className="mt-2 text-sm text-muted">
-                  Made fresh in-house. Order at the counter or from your VIP seat.
-                </p>
-                <div className="mt-8 grid gap-x-12 gap-y-4 sm:grid-cols-2">
-                  {MENU.map(([name, price]) => (
-                    <div key={name} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-3">
-                      <span className="text-sm">{name}</span>
-                      <span className="text-sm font-medium text-cyan">{price}</span>
-                    </div>
-                  ))}
+              <FadeIn delay={200}>
+                <div className="mt-16 rounded-4xl border bg-surface/50 p-8 sm:p-12">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-crimson/15 text-crimson ring-1 ring-crimson/30">
+                    <I.popcorn className="h-5 w-5" />
+                  </span>
+                  <h2 className="mt-5 text-3xl font-semibold">Snacks & concessions</h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Made fresh in-house. Order at the counter or from your VIP seat.
+                  </p>
+                  <div className="mt-8 grid gap-x-12 gap-y-4 sm:grid-cols-2">
+                    {MENU.map(([name, price]) => (
+                      <div key={name} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-3">
+                        <span className="text-sm">{name}</span>
+                        <span className="text-sm font-medium text-cyan">{price}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </FadeIn>
             </div>
           </div>
         );
       }
 
       /* ============================================================
-         11. PAGE — LOCATION
+         12. PAGE — LOCATION
          ============================================================ */
       const DIRECTIONS = [
         {
@@ -1208,67 +1294,73 @@
 
             <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
               <div className="grid gap-6 md:grid-cols-3">
-                {DIRECTIONS.map((d) => (
-                  <div key={d.title} className="rounded-3xl border bg-surface/50 p-7">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
-                      <d.icon />
-                    </span>
-                    <h2 className="mt-5 text-xl font-semibold">{d.title}</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">{d.body}</p>
-                  </div>
+                {DIRECTIONS.map((d, i) => (
+                  <FadeIn key={d.title} delay={i * 100}>
+                    <div className="rounded-3xl border bg-surface/50 p-7">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                        <d.icon />
+                      </span>
+                      <h2 className="mt-5 text-xl font-semibold">{d.title}</h2>
+                      <p className="mt-2 text-sm leading-relaxed text-muted">{d.body}</p>
+                    </div>
+                  </FadeIn>
                 ))}
               </div>
 
               <div className="mt-8 grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border bg-surface/50 p-8">
-                  <h2 className="text-2xl font-semibold">Opening hours</h2>
-                  <ul className="mt-6 space-y-3 text-sm">
-                    {HOURS.map(([d, h]) => (
-                      <li key={d} className="flex justify-between border-b border-dashed pb-3">
-                        <span className="text-muted">{d}</span>
-                        <span className="font-medium">{h}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-6 flex items-center gap-2 text-xs text-muted">
-                    <I.clock className="h-3.5 w-3.5" /> Box office closes 30 minutes after the last
-                    screening starts.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-6">
+                <FadeIn delay={100}>
                   <div className="rounded-3xl border bg-surface/50 p-8">
-                    <h2 className="text-2xl font-semibold">Get in touch</h2>
-                    <div className="mt-5 space-y-4 text-sm">
-                      <p className="flex gap-3">
-                        <span className="mt-0.5 shrink-0 text-cyan"><I.pin /></span>
-                        <span className="text-muted">
-                          Gast Cinema, CMC Area, Next to Century Mall, Addis Ababa, Ethiopia
-                        </span>
-                      </p>
-                      <p className="flex gap-3">
-                        <span className="mt-0.5 shrink-0 text-cyan"><I.phone /></span>
-                        <a href="tel:+251930113388" className="hover:text-cyan">+251 930 113388</a>
-                      </p>
+                    <h2 className="text-2xl font-semibold">Opening hours</h2>
+                    <ul className="mt-6 space-y-3 text-sm">
+                      {HOURS.map(([d, h]) => (
+                        <li key={d} className="flex justify-between border-b border-dashed pb-3">
+                          <span className="text-muted">{d}</span>
+                          <span className="font-medium">{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-6 flex items-center gap-2 text-xs text-muted">
+                      <I.clock className="h-3.5 w-3.5" /> Box office closes 30 minutes after the last
+                      screening starts.
+                    </p>
+                  </div>
+                </FadeIn>
+
+                <FadeIn delay={200}>
+                  <div className="flex flex-col gap-6">
+                    <div className="rounded-3xl border bg-surface/50 p-8">
+                      <h2 className="text-2xl font-semibold">Get in touch</h2>
+                      <div className="mt-5 space-y-4 text-sm">
+                        <p className="flex gap-3">
+                          <span className="mt-0.5 shrink-0 text-cyan"><I.pin /></span>
+                          <span className="text-muted">
+                            Gast Cinema, CMC Area, Next to Century Mall, Addis Ababa, Ethiopia
+                          </span>
+                        </p>
+                        <p className="flex gap-3">
+                          <span className="mt-0.5 shrink-0 text-cyan"><I.phone /></span>
+                          <a href="tel:+251930113388" className="hover:text-cyan">+251 930 113388</a>
+                        </p>
+                      </div>
+                      <a
+                        href="https://maps.google.com/?q=Century+Mall+CMC+Addis+Ababa"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="glow-cyan mt-6 inline-flex rounded-full bg-cyan px-5 py-2.5 text-sm font-semibold text-black"
+                      >
+                        Open in Maps
+                      </a>
                     </div>
-                    <a
-                      href="https://maps.google.com/?q=Century+Mall+CMC+Addis+Ababa"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="glow-cyan mt-6 inline-flex rounded-full bg-cyan px-5 py-2.5 text-sm font-semibold text-black"
-                    >
-                      Open in Maps
-                    </a>
+                    <div className="overflow-hidden rounded-3xl border">
+                      <img
+                        src={U("1524661135-423995f22d0b", 1400)}
+                        alt="Aerial view of the CMC neighbourhood"
+                        loading="lazy"
+                        className="h-56 w-full object-cover"
+                      />
+                    </div>
                   </div>
-                  <div className="overflow-hidden rounded-3xl border">
-                    <img
-                      src={U("1524661135-423995f22d0b", 1400)}
-                      alt="Aerial view of the CMC neighbourhood"
-                      loading="lazy"
-                      className="h-56 w-full object-cover"
-                    />
-                  </div>
-                </div>
+                </FadeIn>
               </div>
             </div>
           </div>
@@ -1276,7 +1368,7 @@
       }
 
       /* ============================================================
-         12. 404 + APP SHELL
+         13. 404 + APP SHELL
          ============================================================ */
       function NotFound() {
         return (
@@ -1302,6 +1394,29 @@
       }
 
       function App() {
+        // Initialize Lenis Smooth Scroll on Mount
+        useEffect(() => {
+          if (typeof Lenis !== "undefined") {
+            const lenis = new Lenis({
+              duration: 1.2,
+              easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+              smoothWheel: true,
+              touchMultiplier: 2,
+            });
+
+            function raf(time) {
+              lenis.raf(time);
+              requestAnimationFrame(raf);
+            }
+
+            requestAnimationFrame(raf);
+
+            return () => {
+              lenis.destroy();
+            };
+          }
+        }, []);
+
         return (
           <RouterProvider>
             <BookingProvider>
