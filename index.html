@@ -1,214 +1,1322 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CineWorld - Complete Cinema App</title>
-  
-  <!-- Supabase JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gast Cinema — CMC, Addis Ababa</title>
+    <meta
+      name="description"
+      content="Book laser-projected, Dolby Atmos screenings at Gast Cinema, CMC Addis Ababa. Amharic and international films, VIP couches and IMAX."
+    />
+    <meta property="og:title" content="Gast Cinema — CMC, Addis Ababa" />
+    <meta property="og:description" content="Amharic and international films in 4K laser and Dolby Atmos at CMC, Addis Ababa." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cyan: "#00F0FF",
+              crimson: "#FF2E54",
+              zinc950: "#09090b",
+              surface: "#09090b",
+              surface2: "#18181b",
+              line: "#27272a",
+              muted: "#a1a1aa",
+            },
+            fontFamily: {
+              display: ["Sora", "sans-serif"],
+              sans: ["Manrope", "sans-serif"],
+            },
+            borderRadius: { "4xl": "2rem" },
+          },
+        },
+      };
+    </script>
+    <style>
+      html { scroll-behavior: smooth; }
+      body { background: #000; color: #fff; font-family: Manrope, sans-serif; -webkit-font-smoothing: antialiased; }
+      h1, h2, h3, h4 { font-family: Sora, sans-serif; letter-spacing: -0.03em; }
+      *, ::before, ::after { border-color: #27272a; }
+      .glass { background: rgba(0,0,0,.6); backdrop-filter: blur(24px) saturate(150%); border-color: rgba(255,255,255,.1); }
+      .glow-cyan { box-shadow: 0 0 0 1px rgba(0,240,255,.35), 0 0 32px -6px rgba(0,240,255,.6); }
+      .screen-glow { box-shadow: 0 0 60px -6px rgba(0,240,255,.7), 0 0 140px 0 rgba(0,240,255,.3); }
+      .veil { background-image: linear-gradient(to top, #000 8%, rgba(0,0,0,.7) 45%, transparent 100%); }
+      .radial-accent { background-image: radial-gradient(60% 50% at 50% 0%, rgba(0,240,255,.14) 0%, transparent 70%); }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 99px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
 
-  <style>
-    :root {
-      --bg-main: #0f172a;
-      --bg-card: #1e293b;
-      --accent: #e11d48;
-      --accent-hover: #be123c;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --seat-available: #334155;
-      --seat-selected: #22c55e;
-      --seat-occupied: #ef4444;
-    }
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.22.20/babel.min.js"></script>
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-main); color: var(--text); }
+    <script type="text/babel" data-presets="react">
+      const { useState, useEffect, useMemo, useCallback, createContext, useContext } = React;
 
-    /* Navigation */
-    nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #020617; border-bottom: 1px solid #1e293b; sticky: top; }
-    .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); cursor: pointer; }
-    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
-    .nav-links a { color: var(--text); text-decoration: none; font-weight: 500; cursor: pointer; }
-    .nav-links a:hover { color: var(--accent); }
+      /* ============================================================
+         1. ICONS (inline SVG, lucide-style)
+         ============================================================ */
+      const Icon = ({ d, className = "w-4 h-4", fill = "none" }) => (
+        <svg
+          className={className}
+          viewBox="0 0 24 24"
+          fill={fill}
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {d}
+        </svg>
+      );
+      const I = {
+        ticket: (p) => <Icon {...p} d={<><path d="M2 9a3 3 0 010 6v2a2 2 0 002 2h16a2 2 0 002-2v-2a3 3 0 010-6V7a2 2 0 00-2-2H4a2 2 0 00-2 2z" /><path d="M13 5v14" /></>} />,
+        menu: (p) => <Icon {...p} d={<><path d="M4 6h16M4 12h16M4 18h16" /></>} />,
+        x: (p) => <Icon {...p} d={<><path d="M18 6L6 18M6 6l12 12" /></>} />,
+        play: (p) => <Icon {...p} d={<polygon points="6 3 20 12 6 21 6 3" />} />,
+        star: (p) => <Icon {...p} fill="currentColor" d={<polygon points="12 2 15 9 22 9.3 16.5 13.8 18.4 21 12 17 5.6 21 7.5 13.8 2 9.3 9 9" />} />,
+        clock: (p) => <Icon {...p} d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />,
+        left: (p) => <Icon {...p} d={<path d="M15 18l-6-6 6-6" />} />,
+        right: (p) => <Icon {...p} d={<path d="M9 18l6-6-6-6" />} />,
+        arrow: (p) => <Icon {...p} d={<><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></>} />,
+        check: (p) => <Icon {...p} d={<path d="M20 6L9 17l-5-5" />} />,
+        pin: (p) => <Icon {...p} d={<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1116 0z" /><circle cx="12" cy="10" r="3" /></>} />,
+        phone: (p) => <Icon {...p} d={<path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 2 .7 2.9a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.2-1.2a2 2 0 012.1-.5c.9.3 1.9.6 2.9.7a2 2 0 011.7 2z" />} />,
+        send: (p) => <Icon {...p} d={<><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></>} />,
+        sparkles: (p) => <Icon {...p} d={<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />} />,
+        armchair: (p) => <Icon {...p} d={<><path d="M19 9V6a2 2 0 00-2-2H7a2 2 0 00-2 2v3" /><path d="M3 11a2 2 0 114 0v3h10v-3a2 2 0 114 0v5a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><path d="M5 18v2M19 18v2" /></>} />,
+        volume: (p) => <Icon {...p} d={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14" /></>} />,
+        projector: (p) => <Icon {...p} d={<><rect x="2" y="7" width="20" height="12" rx="2" /><circle cx="9" cy="13" r="3" /><path d="M17 11h2" /></>} />,
+        popcorn: (p) => <Icon {...p} d={<><path d="M5 9h14l-1.5 12h-11z" /><path d="M6 9a2.5 2.5 0 013-3 2.5 2.5 0 016 0 2.5 2.5 0 013 3" /></>} />,
+        car: (p) => <Icon {...p} d={<><path d="M5 17h14l-1.5-6.5A2 2 0 0015.6 9H8.4a2 2 0 00-1.9 1.5z" /><circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" /></>} />,
+        bus: (p) => <Icon {...p} d={<><rect x="4" y="4" width="16" height="13" rx="2" /><path d="M4 10h16M7 21v-2M17 21v-2" /></>} />,
+        landmark: (p) => <Icon {...p} d={<><path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M12 3l9 5H3z" /></>} />,
+      };
 
-    /* Views / Pages */
-    .page { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; }
-    .page.active { display: block; }
+      /* ============================================================
+         2. MOCK DATA
+         ============================================================ */
+      const PRICE_STANDARD = 300;
+      const PRICE_VIP = 600;
 
-    /* Movie Grid */
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-    .card { background: var(--bg-card); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
-    .card img { width: 100%; height: 300px; object-fit: cover; }
-    .card-body { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .card-btns { display: flex; gap: 0.5rem; margin-top: 1rem; }
+      const baseTimes = (p) => [
+        { id: p + "-1", time: "2:30 PM", hall: "Hall 1", format: "2D Laser" },
+        { id: p + "-2", time: "5:00 PM", hall: "Hall 2", format: "Dolby Atmos" },
+        { id: p + "-3", time: "7:30 PM", hall: "IMAX", format: "IMAX 4K" },
+        { id: p + "-4", time: "9:45 PM", hall: "VIP Lounge", format: "VIP Recliner" },
+      ];
+      const U = (id, w) =>
+        `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
-    /* Buttons */
-    .btn { flex: 1; padding: 0.6rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: center; }
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-secondary { background: #334155; color: white; }
+      const MOVIES = [
+        {
+          id: "nightfall-protocol",
+          title: "Nightfall Protocol",
+          tagline: "The city sleeps. The signal doesn't.",
+          synopsis:
+            "A blackout sweeps a megacity and a disgraced signals analyst has eleven hours to trace a rogue broadcast before dawn resets everything. A tense, neon-soaked thriller shot almost entirely at night.",
+          poster: U("1478720568477-152d9b164e26", 800),
+          backdrop: U("1478720568477-152d9b164e26", 2400),
+          rating: 8.4, ageRating: "16+", runtime: "2h 08m",
+          genres: ["Thriller", "Sci-Fi"], language: "English", subtitles: "Amharic subtitles",
+          director: "Ines Ferrand", cast: ["Owen Adeyemi", "Marta Kolar", "Dawit Bekele"],
+          categories: ["now", "premium"], showtimes: baseTimes("nf"),
+        },
+        {
+          id: "addis-sunrise",
+          title: "Addis Sunrise",
+          tagline: "ጠዋት ላይ ሁሉም ነገር ይለወጣል።",
+          synopsis:
+            "Three taxi drivers, one wedding, and a morning in Addis Ababa that refuses to go to plan. A warm, funny portrait of the city told across a single sunrise.",
+          poster: U("1518676590629-3dcbd9c5a5c9", 800),
+          backdrop: U("1518676590629-3dcbd9c5a5c9", 2400),
+          rating: 8.9, ageRating: "13+", runtime: "1h 54m",
+          genres: ["Drama", "Comedy"], language: "Amharic", subtitles: "English subtitles",
+          director: "Selam Girma", cast: ["Hanna Tesfaye", "Yonas Alemu", "Meaza Worku"],
+          categories: ["now", "amharic"], showtimes: baseTimes("as"),
+        },
+        {
+          id: "orbit-of-glass",
+          title: "Orbit of Glass",
+          tagline: "Every reflection is a decision.",
+          synopsis:
+            "A deep-space maintenance crew discovers their station's mirrored hull is showing them futures that haven't happened yet. Presented in IMAX 4K with an expanded frame.",
+          poster: U("1446776877081-d282a0f896e2", 800),
+          backdrop: U("1446776877081-d282a0f896e2", 2400),
+          rating: 8.1, ageRating: "13+", runtime: "2h 22m",
+          genres: ["Sci-Fi", "Mystery"], language: "English", subtitles: "Amharic subtitles",
+          director: "Kenji Alvarez", cast: ["Rhea Sandoval", "Tomas Nyberg", "Liya Haile"],
+          categories: ["now", "premium"], showtimes: baseTimes("og"),
+        },
+        {
+          id: "the-long-rains",
+          title: "The Long Rains",
+          tagline: "Some seasons never really end.",
+          synopsis:
+            "A coffee farmer returns to the highlands after fifteen years abroad to settle a family dispute, and finds the land has kept better records than the people.",
+          poster: U("1489599849927-2ee91cede3ba", 800),
+          backdrop: U("1489599849927-2ee91cede3ba", 2400),
+          rating: 7.8, ageRating: "13+", runtime: "2h 01m",
+          genres: ["Drama"], language: "Amharic", subtitles: "English subtitles",
+          director: "Bereket Nega", cast: ["Sara Mekonnen", "Abel Tadesse", "Ruth Girmay"],
+          categories: ["now", "amharic"], showtimes: baseTimes("lr"),
+        },
+        {
+          id: "crimson-line",
+          title: "Crimson Line",
+          tagline: "Cross it once.",
+          synopsis:
+            "A getaway driver takes one last contract across three borders. Shot on 65mm, mixed for Dolby Atmos, and built around a twenty-minute unbroken chase.",
+          poster: U("1440404653325-ab127d49abc1", 800),
+          backdrop: U("1440404653325-ab127d49abc1", 2400),
+          rating: 7.6, ageRating: "18+", runtime: "1h 47m",
+          genres: ["Action", "Crime"], language: "English", subtitles: "Amharic subtitles",
+          director: "Nora Vaziri", cast: ["Idris Kamau", "Petra Lind", "Samuel Asres"],
+          categories: ["now", "premium"], showtimes: baseTimes("cl"),
+        },
+        {
+          id: "paper-lantern",
+          title: "Paper Lantern",
+          tagline: "A small light, carried far.",
+          synopsis:
+            "An animated fable about a girl who trades her voice for a lantern that can find anyone who is lost. Hand-painted across four years.",
+          poster: U("1490810194309-344b3661ba39", 800),
+          backdrop: U("1490810194309-344b3661ba39", 2400),
+          rating: 8.7, ageRating: "All ages", runtime: "1h 38m",
+          genres: ["Animation", "Family"], language: "English", subtitles: "Amharic subtitles",
+          director: "Mei Watanabe", cast: ["Aiko Ren", "Colm Byrne", "Feven Assefa"],
+          categories: ["now"], showtimes: baseTimes("pl"),
+        },
+        {
+          id: "the-ninth-hour",
+          title: "The Ninth Hour",
+          tagline: "Coming this season.",
+          synopsis:
+            "A courtroom drama that unfolds in real time across a single afternoon recess. Advance bookings open two weeks before release.",
+          poster: U("1517604931442-7e0c8ed2963c", 800),
+          backdrop: U("1517604931442-7e0c8ed2963c", 2400),
+          rating: 0, ageRating: "16+", runtime: "2h 10m",
+          genres: ["Drama", "Thriller"], language: "English", subtitles: "Amharic subtitles",
+          director: "Grant Ayodele", cast: ["Nadia Rahmani", "Peter Osei", "Helen Tamrat"],
+          categories: ["soon"], releaseNote: "In cinemas 14 August", showtimes: [],
+        },
+        {
+          id: "highland-echo",
+          title: "Highland Echo",
+          tagline: "The mountains answer back.",
+          synopsis:
+            "A documentary crew follows a shepherd's route across the Simien range for one full year, recording a soundscape that has never been captured before.",
+          poster: U("1464822759023-fed622ff2c3b", 800),
+          backdrop: U("1464822759023-fed622ff2c3b", 2400),
+          rating: 0, ageRating: "All ages", runtime: "1h 29m",
+          genres: ["Documentary"], language: "Amharic", subtitles: "English subtitles",
+          director: "Tigist Alemayehu", cast: ["Narrated by Kalkidan Fikre"],
+          categories: ["soon", "amharic"], releaseNote: "In cinemas 29 August", showtimes: [],
+        },
+      ];
 
-    /* Seat Map Modal */
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 100; }
-    .modal.open { display: flex; }
-    .modal-content { background: var(--bg-card); padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; text-align: center; position: relative; }
-    .close-btn { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
+      const CATEGORIES = [
+        { id: "now", label: "Now Showing" },
+        { id: "soon", label: "Coming Soon" },
+        { id: "amharic", label: "Amharic Cinema" },
+        { id: "premium", label: "IMAX / VIP" },
+        { id: "all", label: "All Films" },
+      ];
 
-    /* Screen & Seats */
-    .screen { background: #38bdf8; height: 8px; width: 80%; margin: 1rem auto 2rem; box-shadow: 0 3px 10px rgba(56, 189, 248, 0.7); border-radius: 4px; }
-    .seats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 1.5rem; justify-items: center; }
-    .seat { width: 35px; height: 35px; background: var(--seat-available); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
-    .seat.selected { background: var(--seat-selected); }
-    .seat.occupied { background: var(--seat-occupied); cursor: not-allowed; }
+      const DAYS = [
+        { id: "mon", label: "Mon", date: "27 Jul" },
+        { id: "tue", label: "Tue", date: "28 Jul" },
+        { id: "wed", label: "Wed", date: "29 Jul" },
+        { id: "thu", label: "Thu", date: "30 Jul" },
+        { id: "fri", label: "Fri", date: "31 Jul" },
+        { id: "sat", label: "Sat", date: "01 Aug" },
+        { id: "sun", label: "Sun", date: "02 Aug" },
+      ];
 
-    /* Video Embed */
-    .video-container iframe { width: 100%; height: 280px; border: none; border-radius: 8px; }
-  </style>
-</head>
-<body>
+      const getMovie = (id) => MOVIES.find((m) => m.id === id);
+      const isOccupied = (key) => {
+        let h = 7;
+        for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 9973;
+        return h % 7 === 0;
+      };
+      const cn = (...a) => a.filter(Boolean).join(" ");
 
-  <nav>
-    <div class="logo" onclick="showPage('home')">🎬 CineWorld</div>
-    <ul class="nav-links">
-      <li><a onclick="showPage('home')">Home</a></li>
-      <li><a onclick="showPage('schedule')">Schedule</a></li>
-      <li><a onclick="showPage('location')">Location</a></li>
-    </ul>
-  </nav>
+      /* ============================================================
+         3. HASH ROUTER
+         ============================================================ */
+      const RouterCtx = createContext({ path: "/", go: () => {} });
+      const useRouter = () => useContext(RouterCtx);
 
-  <!-- HOME PAGE -->
-  <section id="home" class="page active">
-    <h1>Now Showing</h1>
-    <div id="movie-grid" class="grid"></div>
-  </section>
+      function RouterProvider({ children }) {
+        const [path, setPath] = useState(
+          () => window.location.hash.replace(/^#/, "") || "/"
+        );
+        useEffect(() => {
+          const on = () => setPath(window.location.hash.replace(/^#/, "") || "/");
+          window.addEventListener("hashchange", on);
+          return () => window.removeEventListener("hashchange", on);
+        }, []);
+        const go = useCallback((to) => {
+          window.location.hash = to;
+          window.scrollTo({ top: 0 });
+        }, []);
+        return <RouterCtx.Provider value={{ path, go }}>{children}</RouterCtx.Provider>;
+      }
 
-  <!-- SCHEDULE PAGE -->
-  <section id="schedule" class="page">
-    <h1>Showtimes & Schedule</h1>
-    <p style="margin-top: 1rem; color: var(--text-muted);">Check upcoming showtimes for this week.</p>
-  </section>
+      function Link({ to, className, children, onClick }) {
+        const { go } = useRouter();
+        return (
+          <a
+            href={"#" + to}
+            className={className}
+            onClick={(e) => {
+              e.preventDefault();
+              onClick && onClick();
+              go(to);
+            }}
+          >
+            {children}
+          </a>
+        );
+      }
 
-  <!-- LOCATION PAGE -->
-  <section id="location" class="page">
-    <h1>Our Location</h1>
-    <p style="margin-top: 1rem; color: var(--text-muted);">Find us at Grand Cinema Plaza, Hall 4.</p>
-  </section>
+      /* ============================================================
+         4. BOOKING STATE (Context)
+         ============================================================ */
+      const BookingCtx = createContext(null);
+      const useBooking = () => useContext(BookingCtx);
 
-  <!-- SEAT MAP MODAL -->
-  <div id="booking-modal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn" onclick="closeModals()">&times;</span>
-      <h2 id="modal-movie-title">Select Seats</h2>
-      <div class="screen"></div>
-      <div id="seats-container" class="seats-grid"></div>
-      <p id="booking-summary" style="margin-bottom: 1rem; color: var(--text-muted);">Selected: 0 seats ($0)</p>
-      <button class="btn btn-primary" onclick="confirmBooking()">Confirm Reservation</button>
-    </div>
-  </div>
+      function BookingProvider({ children }) {
+        const [movieId, setMovieId] = useState(null);
+        const [showtimeId, setShowtimeId] = useState(null);
+        const [seats, setSeats] = useState([]);
 
-  <!-- TRAILER MODAL -->
-  <div id="trailer-modal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn" onclick="closeModals()">&times;</span>
-      <h2>Movie Trailer</h2>
-      <div class="video-container" id="trailer-container" style="margin-top: 1rem;"></div>
-    </div>
-  </div>
+        const setMovie = useCallback((id) => {
+          setMovieId((prev) => {
+            if (prev !== id) { setSeats([]); setShowtimeId(null); }
+            return id;
+          });
+        }, []);
+        const setShowtime = useCallback((id) => { setShowtimeId(id); setSeats([]); }, []);
+        const toggleSeat = useCallback((seat) => {
+          setSeats((prev) =>
+            prev.some((s) => s.id === seat.id)
+              ? prev.filter((s) => s.id !== seat.id)
+              : [...prev, seat].sort((a, b) => a.id.localeCompare(b.id))
+          );
+        }, []);
+        const clear = useCallback(() => setSeats([]), []);
+        const total = useMemo(
+          () => seats.reduce((sum, s) => sum + (s.vip ? PRICE_VIP : PRICE_STANDARD), 0),
+          [seats]
+        );
 
-  <script>
-    // 1. DATA
-    const movies = [
-      { id: "1", title: "Interstellar", genre: "Sci-Fi", price: 12, trailer: "https://www.youtube.com/embed/zSWdZVtXT7E", image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500" },
-      { id: "2", title: "The Dark Knight", genre: "Action", price: 10, trailer: "https://www.youtube.com/embed/EXeTwQWrcwY", image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500" }
-    ];
+        return (
+          <BookingCtx.Provider
+            value={{ movieId, showtimeId, seats, total, setMovie, setShowtime, toggleSeat, clear }}
+          >
+            {children}
+          </BookingCtx.Provider>
+        );
+      }
 
-    let selectedMovie = null;
-    let selectedSeats = [];
+      /* ============================================================
+         5. LAYOUT — HEADER / FOOTER
+         ============================================================ */
+      const NAV = [
+        { to: "/", label: "Films" },
+        { to: "/schedule", label: "Schedule" },
+        { to: "/experience", label: "Experience" },
+        { to: "/location", label: "Location" },
+      ];
 
-    // 2. ROUTING
-    function showPage(pageId) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById(pageId).classList.add('active');
-    }
+      function Header() {
+        const [open, setOpen] = useState(false);
+        const { path } = useRouter();
+        return (
+          <header className="glass sticky top-0 z-50 border-b">
+            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+              <Link to="/" className="flex items-center gap-2.5">
+                <span className="flex size-8 h-8 w-8 items-center justify-center rounded-lg bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                  <I.ticket />
+                </span>
+                <span className="font-display text-[15px] font-semibold uppercase tracking-[0.18em]">
+                  Gast Cinema
+                </span>
+              </Link>
 
-    // 3. RENDER MOVIES
-    function renderMovies() {
-      const grid = document.getElementById('movie-grid');
-      grid.innerHTML = movies.map(m => `
-        <div class="card">
-          <img src="${m.image}" alt="${m.title}">
-          <div class="card-body">
-            <div>
-              <h3>${m.title}</h3>
-              <p style="color: var(--text-muted);">${m.genre} • $${m.price}</p>
+              <nav className="hidden items-center gap-1 md:flex">
+                {NAV.map((l) => (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-sm transition-colors",
+                      path === l.to ? "bg-white/5 text-white" : "text-muted hover:text-white"
+                    )}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </nav>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/schedule"
+                  className="glow-cyan hidden rounded-full bg-cyan px-4 py-2 text-sm font-semibold text-black transition-transform hover:scale-[1.03] active:scale-95 sm:inline-flex"
+                >
+                  Book Tickets
+                </Link>
+                <button
+                  aria-label="Toggle menu"
+                  onClick={() => setOpen(!open)}
+                  className="rounded-lg border p-2 text-muted md:hidden"
+                >
+                  {open ? <I.x /> : <I.menu />}
+                </button>
+              </div>
             </div>
-            <div class="card-btns">
-              <button class="btn btn-secondary" onclick="openTrailer('${m.trailer}')">Trailer</button>
-              <button class="btn btn-primary" onclick="openBooking('${m.id}')">Book</button>
+            {open && (
+              <nav className="border-t px-5 py-3 md:hidden">
+                {NAV.map((l) => (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-lg px-2 py-2.5 text-sm text-muted"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </nav>
+            )}
+          </header>
+        );
+      }
+
+      function Footer() {
+        const [email, setEmail] = useState("");
+        const [done, setDone] = useState(false);
+        return (
+          <footer className="mt-24 border-t bg-surface/40">
+            <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.2fr_1fr_1fr]">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                    <I.ticket />
+                  </span>
+                  <span className="font-display text-[15px] font-semibold uppercase tracking-[0.18em]">
+                    Gast Cinema
+                  </span>
+                </div>
+                <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted">
+                  Addis Ababa's laser-projected, Atmos-tuned cinema. Amharic and international
+                  titles, seven days a week.
+                </p>
+                <a
+                  href="https://t.me/gastcinema"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full border border-cyan/30 bg-cyan/10 px-3.5 py-1.5 text-xs font-medium text-cyan"
+                >
+                  <I.send className="h-3.5 w-3.5" /> Join our Telegram channel
+                </a>
+              </div>
+
+              <div className="text-sm">
+                <h4 className="text-xs uppercase tracking-[0.16em] text-muted">Visit</h4>
+                <ul className="mt-4 space-y-3">
+                  <li className="flex gap-2.5">
+                    <span className="mt-0.5 shrink-0 text-cyan"><I.pin /></span>
+                    <span className="text-muted">
+                      CMC Area, Next to Century Mall<br />Addis Ababa, Ethiopia
+                    </span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="mt-0.5 shrink-0 text-cyan"><I.phone /></span>
+                    <a href="tel:+251930113388" className="text-muted hover:text-white">
+                      +251 930 113388
+                    </a>
+                  </li>
+                </ul>
+                <div className="mt-5 flex flex-col gap-1 text-xs text-muted">
+                  <span>Mon–Thu · 10:00 – 23:00</span>
+                  <span>Fri–Sun · 09:00 – 01:00</span>
+                </div>
+              </div>
+
+              <div className="text-sm">
+                <h4 className="text-xs uppercase tracking-[0.16em] text-muted">Weekly lineup</h4>
+                <p className="mt-4 text-sm text-muted">
+                  New showtimes every Thursday, straight to your inbox.
+                </p>
+                <form
+                  className="mt-4 flex gap-2"
+                  onSubmit={(e) => { e.preventDefault(); setDone(true); setEmail(""); }}
+                >
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className="min-w-0 flex-1 rounded-full border bg-black px-4 py-2 text-sm outline-none placeholder:text-muted focus:ring-2 focus:ring-cyan/50"
+                  />
+                  <button className="rounded-full bg-cyan px-4 py-2 text-sm font-semibold text-black">
+                    Join
+                  </button>
+                </form>
+                {done && <p className="mt-2 text-xs text-cyan">You're on the list. አመሰግናለሁ!</p>}
+              </div>
+            </div>
+
+            <div className="border-t">
+              <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                <span>© {new Date().getFullYear()} Gast Cinema, CMC Addis Ababa.</span>
+                <div className="flex gap-5">
+                  <Link to="/experience" className="hover:text-white">Experience</Link>
+                  <Link to="/location" className="hover:text-white">Getting here</Link>
+                </div>
+              </div>
+            </div>
+          </footer>
+        );
+      }
+
+      /* ============================================================
+         6. COMPONENTS — HERO CAROUSEL / MOVIE CARD / SEAT MAP
+         ============================================================ */
+      function HeroCarousel({ movies }) {
+        const [index, setIndex] = useState(0);
+        const [trailer, setTrailer] = useState(false);
+        const movie = movies[index];
+
+        useEffect(() => {
+          if (trailer) return;
+          const t = setInterval(() => setIndex((i) => (i + 1) % movies.length), 7000);
+          return () => clearInterval(t);
+        }, [movies.length, trailer]);
+
+        const go = (d) => setIndex((i) => (i + d + movies.length) % movies.length);
+
+        return (
+          <section className="relative h-[86vh] min-h-[560px] w-full overflow-hidden">
+            {movies.map((m, i) => (
+              <img
+                key={m.id}
+                src={m.backdrop}
+                alt={m.title + " backdrop"}
+                className={cn(
+                  "absolute inset-0 h-full w-full object-cover transition-opacity duration-1000",
+                  i === index ? "opacity-100" : "opacity-0"
+                )}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/10" />
+            <div className="veil absolute inset-0" />
+
+            <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-20 sm:px-8">
+              <div className="max-w-2xl">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                  <span className="rounded-full border border-cyan/30 bg-cyan/10 px-2.5 py-1 font-medium text-cyan">
+                    {movie.ageRating}
+                  </span>
+                  <span className="glass rounded-full border px-2.5 py-1">{movie.language}</span>
+                  <span className="glass rounded-full border px-2.5 py-1">{movie.subtitles}</span>
+                  {movie.rating > 0 && (
+                    <span className="flex items-center gap-1">
+                      <I.star className="h-3 w-3 text-cyan" /> {movie.rating.toFixed(1)} IMDb
+                    </span>
+                  )}
+                  <span>{movie.runtime}</span>
+                </div>
+
+                <h1 className="mt-5 text-5xl font-semibold leading-[0.95] sm:text-7xl">
+                  {movie.title}
+                </h1>
+                <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+                  {movie.tagline}
+                </p>
+
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link
+                    to={"/movies/" + movie.id}
+                    className="glow-cyan rounded-full bg-cyan px-6 py-3 text-sm font-semibold text-black transition-transform hover:scale-[1.03] active:scale-95"
+                  >
+                    Book Now
+                  </Link>
+                  <button
+                    onClick={() => setTrailer(true)}
+                    className="glass inline-flex items-center gap-2 rounded-full border px-6 py-3 text-sm font-medium hover:bg-white/10"
+                  >
+                    <I.play /> Watch Trailer
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-12 flex items-center gap-4">
+                <div className="flex gap-2">
+                  {movies.map((m, i) => (
+                    <button
+                      key={m.id}
+                      aria-label={"Show " + m.title}
+                      onClick={() => setIndex(i)}
+                      className={cn(
+                        "h-[3px] rounded-full transition-all duration-300",
+                        i === index ? "w-10 bg-cyan" : "w-5 bg-white/25 hover:bg-white/50"
+                      )}
+                    />
+                  ))}
+                </div>
+                <div className="ml-auto flex gap-2">
+                  <button aria-label="Previous" onClick={() => go(-1)} className="glass rounded-full border p-2.5 hover:bg-white/10">
+                    <I.left />
+                  </button>
+                  <button aria-label="Next" onClick={() => go(1)} className="glass rounded-full border p-2.5 hover:bg-white/10">
+                    <I.right />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {trailer && (
+              <div
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-5 backdrop-blur-md"
+                onClick={() => setTrailer(false)}
+              >
+                <div
+                  className="w-full max-w-3xl overflow-hidden rounded-3xl border bg-surface"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="relative aspect-video">
+                    <img src={movie.backdrop} alt="" className="h-full w-full object-cover opacity-50" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-cyan/20 text-cyan ring-1 ring-cyan/40">
+                        <I.play className="h-6 w-6" fill="currentColor" />
+                      </span>
+                      <p className="text-sm text-muted">
+                        Trailer preview — {movie.title} ({movie.runtime})
+                      </p>
+                    </div>
+                    <button
+                      aria-label="Close trailer"
+                      onClick={() => setTrailer(false)}
+                      className="glass absolute right-4 top-4 rounded-full border p-2"
+                    >
+                      <I.x />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      }
+
+      function MovieCard({ movie }) {
+        return (
+          <Link
+            to={"/movies/" + movie.id}
+            className="group relative block overflow-hidden rounded-3xl border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-white/20"
+          >
+            <div className="relative aspect-[2/3] overflow-hidden">
+              <img
+                src={movie.poster}
+                alt={movie.title + " poster"}
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="veil absolute inset-0" />
+              <div className="absolute left-3 top-3 flex gap-1.5">
+                <span className="glass rounded-full border px-2 py-0.5 text-[10px] font-medium">{movie.ageRating}</span>
+                <span className="glass rounded-full border px-2 py-0.5 text-[10px] font-medium">{movie.language}</span>
+              </div>
+              {movie.rating > 0 && (
+                <span className="glass absolute right-3 top-3 flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold">
+                  <I.star className="h-3 w-3 text-cyan" /> {movie.rating.toFixed(1)}
+                </span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 p-4">
+                <h3 className="text-base font-semibold leading-tight">{movie.title}</h3>
+                <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted">
+                  <span className="flex items-center gap-1"><I.clock className="h-3 w-3" /> {movie.runtime}</span>
+                  <span>{movie.genres.join(" · ")}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 p-4">
+              {movie.showtimes.length > 0 ? (
+                movie.showtimes.slice(0, 4).map((s) => (
+                  <span
+                    key={s.id}
+                    className="rounded-lg border bg-surface2 px-2 py-1 text-[11px] transition-colors group-hover:border-cyan/40 group-hover:text-cyan"
+                  >
+                    {s.time}
+                  </span>
+                ))
+              ) : (
+                <span className="rounded-lg border border-crimson/25 bg-crimson/10 px-2 py-1 text-[11px] text-crimson">
+                  {movie.releaseNote || "Coming soon"}
+                </span>
+              )}
+            </div>
+          </Link>
+        );
+      }
+
+      const STANDARD_ROWS = ["A", "B", "C", "D", "E", "F"];
+      const VIP_ROWS = ["G", "H"];
+
+      function SeatMap({ showtimeId }) {
+        const { seats, toggleSeat } = useBooking();
+        const isSelected = (id) => seats.some((s) => s.id === id);
+
+        const row = (r, cols, vip) => (
+          <div key={r} className="flex items-center justify-center gap-1.5 sm:gap-2">
+            <span className="w-4 text-[10px] text-muted">{r}</span>
+            <div className={cn("flex gap-1.5 sm:gap-2", !vip && "flex-wrap justify-center")}>
+              {Array.from({ length: cols }).map((_, i) => {
+                const id = r + (i + 1);
+                const occupied = isOccupied(showtimeId + "-" + id);
+                const selected = isSelected(id);
+                return (
+                  <button
+                    key={id}
+                    disabled={occupied}
+                    aria-label={"Seat " + id + (vip ? " VIP" : "") + (occupied ? " occupied" : "")}
+                    onClick={() => toggleSeat({ id, vip })}
+                    className={cn(
+                      "rounded-md border text-[9px] font-medium transition-all duration-150",
+                      vip ? "h-7 w-10 rounded-lg sm:w-12" : "h-6 w-6 sm:h-7 sm:w-7",
+                      occupied && "cursor-not-allowed border-white/5 bg-white/5 text-white/15",
+                      !occupied && !selected &&
+                        (vip
+                          ? "border-crimson/40 text-crimson/80 hover:border-crimson hover:bg-crimson/15"
+                          : "bg-surface2 text-muted hover:border-cyan/60 hover:text-cyan"),
+                      selected && "glow-cyan border-cyan bg-cyan text-black"
+                    )}
+                  >
+                    {occupied ? "" : i + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="w-4" />
+          </div>
+        );
+
+        return (
+          <div className="rounded-3xl border bg-surface/60 p-5 sm:p-8">
+            <div className="mx-auto max-w-lg">
+              <div className="screen-glow mx-auto h-[3px] w-4/5 rounded-full bg-cyan" />
+              <p className="mt-3 text-center text-[10px] uppercase tracking-[0.3em] text-cyan/70">Screen</p>
+            </div>
+
+            <div className="mt-10 space-y-2 sm:space-y-2.5">
+              {STANDARD_ROWS.map((r) => row(r, 12, false))}
+              <div className="py-3">
+                <p className="text-center text-[10px] uppercase tracking-[0.25em] text-muted">VIP Couches</p>
+              </div>
+              {VIP_ROWS.map((r) => row(r, 8, true))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 border-t pt-5 text-[11px] text-muted">
+              <Legend cls="border bg-surface2" label="Available" />
+              <Legend cls="border-cyan bg-cyan" label="Selected" />
+              <Legend cls="border border-white/5 bg-white/5" label="Occupied" />
+              <Legend cls="border border-crimson/40 bg-crimson/15" label="VIP couch · 600 ETB" />
             </div>
           </div>
+        );
+      }
+
+      const Legend = ({ cls, label }) => (
+        <span className="flex items-center gap-2">
+          <span className={cn("h-3.5 w-3.5 rounded", cls)} />
+          {label}
+        </span>
+      );
+
+      const Row = ({ label, value }) => (
+        <div className="flex gap-4">
+          <dt className="w-24 shrink-0 text-xs uppercase tracking-wide text-muted">{label}</dt>
+          <dd className="flex-1 text-sm">{value}</dd>
         </div>
-      `).join('');
-    }
+      );
 
-    // 4. SEAT MAP LOGIC
-    function openBooking(movieId) {
-      selectedMovie = movies.find(m => m.id === movieId);
-      selectedSeats = [];
-      document.getElementById('modal-movie-title').innerText = `Book: ${selectedMovie.title}`;
-      
-      const seatsContainer = document.getElementById('seats-container');
-      seatsContainer.innerHTML = '';
+      /* ============================================================
+         7. PAGE — HOME
+         ============================================================ */
+      function HomePage() {
+        const [tab, setTab] = useState("now");
+        const featured = MOVIES.filter((m) => m.categories.includes("now")).slice(0, 4);
+        const list = tab === "all" ? MOVIES : MOVIES.filter((m) => m.categories.includes(tab));
 
-      for (let i = 1; i <= 18; i++) {
-        const seat = document.createElement('div');
-        seat.className = `seat ${i === 5 || i === 12 ? 'occupied' : ''}`;
-        seat.innerText = i;
-        if (!seat.classList.contains('occupied')) {
-          seat.onclick = () => toggleSeat(seat, i);
-        }
-        seatsContainer.appendChild(seat);
+        return (
+          <React.Fragment>
+            <HeroCarousel movies={featured} />
+
+            <section className="radial-accent">
+              <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+                <div className="flex flex-wrap items-end justify-between gap-6">
+                  <div>
+                    <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-cyan">
+                      <I.sparkles className="h-3.5 w-3.5" /> CMC · Addis Ababa
+                    </p>
+                    <h2 className="mt-3 text-4xl font-semibold sm:text-5xl">The programme</h2>
+                  </div>
+                  <Link to="/schedule" className="group inline-flex items-center gap-2 text-sm text-muted hover:text-white">
+                    Full weekly timetable
+                    <I.arrow className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-1.5 rounded-full border bg-surface/60 p-1.5 sm:inline-flex">
+                  {CATEGORIES.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setTab(c.id)}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-sm transition-all",
+                        tab === c.id
+                          ? "bg-cyan font-semibold text-black"
+                          : "text-muted hover:bg-white/5 hover:text-white"
+                      )}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+                  {list.map((m) => <MovieCard key={m.id} movie={m} />)}
+                </div>
+              </div>
+            </section>
+
+            <section className="mx-auto max-w-7xl px-5 pb-8 sm:px-8">
+              <div className="relative overflow-hidden rounded-4xl border">
+                <img
+                  src={U("1489599849927-2ee91cede3ba", 2000)}
+                  alt="Gast Cinema auditorium"
+                  loading="lazy"
+                  className="h-[360px] w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+                <div className="absolute inset-0 flex flex-col justify-center gap-4 p-8 sm:p-14">
+                  <h3 className="max-w-md text-3xl font-semibold sm:text-4xl">
+                    Four halls. One obsessive standard.
+                  </h3>
+                  <p className="max-w-md text-sm text-muted sm:text-base">
+                    4K laser projection, Dolby Atmos in every hall, and VIP couches with in-seat
+                    concession service.
+                  </p>
+                  <Link to="/experience" className="glass w-fit rounded-full border px-5 py-2.5 text-sm font-medium hover:bg-white/10">
+                    Explore the experience
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </React.Fragment>
+        );
       }
 
-      updateSummary();
-      document.getElementById('booking-modal').classList.add('open');
-    }
+      /* ============================================================
+         8. PAGE — MOVIE DETAIL + SEAT BOOKING ENGINE
+         ============================================================ */
+      function MoviePage({ id }) {
+        const movie = getMovie(id);
+        const { seats, total, showtimeId, setMovie, setShowtime, clear } = useBooking();
+        const [confirmed, setConfirmed] = useState(false);
 
-    function toggleSeat(seatEl, seatNum) {
-      if (selectedSeats.includes(seatNum)) {
-        selectedSeats = selectedSeats.filter(s => s !== seatNum);
-        seatEl.classList.remove('selected');
-      } else {
-        selectedSeats.push(seatNum);
-        seatEl.classList.add('selected');
+        useEffect(() => { if (movie) setMovie(movie.id); }, [movie && movie.id]);
+
+        if (!movie) return <NotFound />;
+        const active = movie.showtimes.find((s) => s.id === showtimeId) || null;
+        const related = MOVIES.filter((m) => m.id !== movie.id).slice(0, 4);
+
+        return (
+          <div className="pb-40">
+            <section className="relative h-[62vh] min-h-[440px]">
+              <img src={movie.backdrop} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/20" />
+              <div className="veil absolute inset-0" />
+              <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-10 sm:px-8">
+                <Link to="/" className="mb-auto inline-flex w-fit items-center gap-2 pt-8 text-sm text-muted hover:text-white">
+                  <I.left /> All films
+                </Link>
+                <div className="flex flex-wrap items-end gap-8">
+                  <img
+                    src={movie.poster}
+                    alt={movie.title + " poster"}
+                    className="hidden w-44 rounded-2xl border object-cover shadow-2xl sm:block"
+                  />
+                  <div className="max-w-2xl">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted">
+                      <span className="rounded-full border border-cyan/30 bg-cyan/10 px-2.5 py-1 text-cyan">{movie.ageRating}</span>
+                      <span className="glass rounded-full border px-2.5 py-1">{movie.language}</span>
+                      <span className="glass rounded-full border px-2.5 py-1">{movie.subtitles}</span>
+                      {movie.rating > 0 && (
+                        <span className="flex items-center gap-1"><I.star className="h-3 w-3 text-cyan" /> {movie.rating.toFixed(1)}</span>
+                      )}
+                      <span className="flex items-center gap-1"><I.clock className="h-3 w-3" /> {movie.runtime}</span>
+                    </div>
+                    <h1 className="mt-4 text-4xl font-semibold sm:text-6xl">{movie.title}</h1>
+                    <p className="mt-3 text-sm text-muted sm:text-base">{movie.tagline}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+              <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr]">
+                <div>
+                  <h2 className="text-xl font-semibold">Synopsis</h2>
+                  <p className="mt-3 leading-relaxed text-muted">{movie.synopsis}</p>
+                </div>
+                <dl className="space-y-4 rounded-3xl border bg-surface/60 p-6 text-sm">
+                  <Row label="Director" value={movie.director} />
+                  <Row label="Cast" value={movie.cast.join(", ")} />
+                  <Row label="Genre" value={movie.genres.join(" · ")} />
+                  <Row label="Audio" value={movie.language + " · Dolby Atmos"} />
+                  <Row label="Subtitles" value={movie.subtitles} />
+                </dl>
+              </div>
+            </section>
+
+            <section className="mx-auto max-w-7xl px-5 sm:px-8">
+              <h2 className="text-3xl font-semibold sm:text-4xl">Choose your seats</h2>
+
+              {movie.showtimes.length === 0 ? (
+                <p className="mt-4 text-sm text-muted">
+                  {movie.releaseNote || "Booking opens closer to release."} Follow our Telegram
+                  channel to be notified when tickets go live.
+                </p>
+              ) : (
+                <React.Fragment>
+                  <p className="mt-2 text-sm text-muted">
+                    Standard {PRICE_STANDARD} ETB · VIP couch {PRICE_VIP} ETB
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap gap-2.5">
+                    {movie.showtimes.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setShowtime(s.id)}
+                        className={cn(
+                          "rounded-2xl border px-4 py-3 text-left transition-all",
+                          showtimeId === s.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
+                        )}
+                      >
+                        <span className={cn("block text-sm font-semibold", showtimeId === s.id && "text-cyan")}>
+                          {s.time}
+                        </span>
+                        <span className="text-[11px] text-muted">{s.hall} · {s.format}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-8">
+                    {active ? (
+                      <SeatMap showtimeId={active.id} />
+                    ) : (
+                      <div className="rounded-3xl border border-dashed bg-surface/30 p-14 text-center text-sm text-muted">
+                        Select a showtime above to open the seat map.
+                      </div>
+                    )}
+                  </div>
+                </React.Fragment>
+              )}
+            </section>
+
+            <section className="mx-auto max-w-7xl px-5 pt-20 sm:px-8">
+              <h2 className="text-2xl font-semibold">More at Gast</h2>
+              <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+                {related.map((m) => (
+                  <Link key={m.id} to={"/movies/" + m.id} className="group overflow-hidden rounded-2xl border bg-surface">
+                    <img
+                      src={m.poster}
+                      alt={m.title}
+                      loading="lazy"
+                      className="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <p className="p-3 text-sm font-medium">{m.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            {seats.length > 0 && active && (
+              <div className="fixed inset-x-0 bottom-0 z-50 p-4">
+                <div className="glass mx-auto flex max-w-3xl flex-wrap items-center gap-4 rounded-2xl border p-4 shadow-2xl">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {seats.length} seat{seats.length > 1 ? "s" : ""} · {seats.map((s) => s.id).join(", ")}
+                    </p>
+                    <p className="text-xs text-muted">{movie.title} · {active.time} · {active.hall}</p>
+                  </div>
+                  <p className="text-xl font-semibold text-cyan">{total.toLocaleString()} ETB</p>
+                  <button onClick={clear} className="rounded-full border px-3 py-2 text-xs text-muted hover:text-white">
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setConfirmed(true)}
+                    className="glow-cyan rounded-full bg-cyan px-5 py-2.5 text-sm font-semibold text-black"
+                  >
+                    Confirm Booking
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmed && active && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-5 backdrop-blur-md">
+                <div className="w-full max-w-md rounded-3xl border bg-surface p-8 text-center">
+                  <button aria-label="Close" onClick={() => setConfirmed(false)} className="ml-auto block text-muted">
+                    <I.x />
+                  </button>
+                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                    <I.check className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-5 text-2xl font-semibold">Booking confirmed</h3>
+                  <p className="mt-2 text-sm text-muted">{movie.title} · {active.time} · {active.hall}</p>
+                  <div className="mt-6 space-y-2 rounded-2xl border bg-black/40 p-4 text-left text-sm">
+                    <Row label="Seats" value={seats.map((s) => s.id).join(", ")} />
+                    <Row label="Total" value={total.toLocaleString() + " ETB"} />
+                    <Row label="Venue" value="Gast Cinema, CMC Addis Ababa" />
+                  </div>
+                  <p className="mt-5 flex items-center justify-center gap-2 text-xs text-muted">
+                    <I.ticket className="h-3.5 w-3.5" /> Reference: GC-{active.id.toUpperCase()}-{seats.length}
+                  </p>
+                  <button
+                    onClick={() => { setConfirmed(false); clear(); }}
+                    className="mt-6 w-full rounded-full bg-cyan py-3 text-sm font-semibold text-black"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       }
-      updateSummary();
-    }
 
-    function updateSummary() {
-      const total = selectedSeats.length * (selectedMovie ? selectedMovie.price : 0);
-      document.getElementById('booking-summary').innerText = `Selected: ${selectedSeats.length} seats ($${total})`;
-    }
+      /* ============================================================
+         9. PAGE — SCHEDULE
+         ============================================================ */
+      function SchedulePage() {
+        const [day, setDay] = useState(DAYS[2].id);
+        const showing = MOVIES.filter((m) => m.showtimes.length > 0);
 
-    function confirmBooking() {
-      if (selectedSeats.length === 0) return alert('Please select at least one seat!');
-      alert(`Successfully booked seats [${selectedSeats.join(', ')}] for ${selectedMovie.title}!`);
-      closeModals();
-    }
+        return (
+          <div className="radial-accent">
+            <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan">Timetable</p>
+              <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">This week at Gast</h1>
+              <p className="mt-4 max-w-xl text-muted">
+                Four halls, seven days. Tap any showtime to jump straight into the seat map.
+              </p>
 
-    // 5. TRAILER MODAL
-    function openTrailer(url) {
-      document.getElementById('trailer-container').innerHTML = `<iframe src="${url}?autoplay=1" allowfullscreen></iframe>`;
-      document.getElementById('trailer-modal').classList.add('open');
-    }
+              <div className="mt-10 flex gap-2 overflow-x-auto pb-2">
+                {DAYS.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDay(d.id)}
+                    className={cn(
+                      "min-w-[86px] rounded-2xl border px-4 py-3 text-center transition-all",
+                      day === d.id ? "glow-cyan border-cyan bg-cyan/10" : "bg-surface hover:border-white/25"
+                    )}
+                  >
+                    <span className={cn("block text-sm font-semibold", day === d.id && "text-cyan")}>{d.label}</span>
+                    <span className="text-[11px] text-muted">{d.date}</span>
+                  </button>
+                ))}
+              </div>
 
-    function closeModals() {
-      document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
-      document.getElementById('trailer-container').innerHTML = '';
-    }
+              <div className="mt-10 divide-y overflow-hidden rounded-3xl border bg-surface/50">
+                {showing.map((m) => (
+                  <div key={m.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+                    <Link to={"/movies/" + m.id} className="flex min-w-0 flex-1 items-center gap-4">
+                      <img src={m.poster} alt={m.title} loading="lazy" className="h-16 w-16 rounded-xl border object-cover" />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{m.title}</p>
+                        <p className="text-xs text-muted">{m.runtime} · {m.language} · {m.ageRating}</p>
+                      </div>
+                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      {m.showtimes.map((s) => (
+                        <Link
+                          key={s.id}
+                          to={"/movies/" + m.id}
+                          className="rounded-xl border bg-surface2 px-3 py-2 text-xs transition-colors hover:border-cyan/60 hover:text-cyan"
+                        >
+                          <span className="font-medium">{s.time}</span>
+                          <span className="ml-2 text-muted">{s.hall}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
 
-    document.addEventListener('DOMContentLoaded', renderMovies);
-  </script>
-</body>
+      /* ============================================================
+         10. PAGE — EXPERIENCE
+         ============================================================ */
+      const FEATURES = [
+        {
+          icon: I.armchair,
+          title: "VIP Lounges",
+          body: "Twelve motorised leather couches per hall, blankets on request, and in-seat concession service that never crosses the beam.",
+          image: U("1595769816263-9b910be24d5f", 1400),
+        },
+        {
+          icon: I.volume,
+          title: "Dolby Atmos",
+          body: "64 discrete channels with overhead arrays, calibrated hall-by-hall every quarter so a whisper lands exactly where it should.",
+          image: U("1507838153414-b4b713384a76", 1400),
+        },
+        {
+          icon: I.projector,
+          title: "4K Laser Projection",
+          body: "RGB laser light engines holding true black on a 18m silver screen — no lamp fade, no colour drift, ever.",
+          image: U("1517604931442-7e0c8ed2963c", 1400),
+        },
+      ];
+      const MENU = [
+        ["Classic salted popcorn", "120 ETB"],
+        ["Caramel & berbere mix", "160 ETB"],
+        ["Macchiato / Buna", "90 ETB"],
+        ["Loaded nachos", "220 ETB"],
+        ["Chicken sambusa (3 pc)", "150 ETB"],
+        ["Fresh mango juice", "110 ETB"],
+      ];
+
+      function ExperiencePage() {
+        return (
+          <div className="radial-accent">
+            <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan">The experience</p>
+              <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">
+                Engineered so the room disappears.
+              </h1>
+              <p className="mt-5 max-w-xl text-muted">
+                Everything at Gast Cinema is tuned around one idea: the moment the lights drop, you
+                should forget you're in CMC at all.
+              </p>
+
+              <div className="mt-14 space-y-6">
+                {FEATURES.map((f, i) => (
+                  <div key={f.title} className="grid gap-6 overflow-hidden rounded-4xl border bg-surface/50 md:grid-cols-2">
+                    <img
+                      src={f.image}
+                      alt={f.title}
+                      loading="lazy"
+                      className={cn("h-72 w-full object-cover md:h-full", i % 2 === 1 && "md:order-2")}
+                    />
+                    <div className="flex flex-col justify-center gap-4 p-8 sm:p-12">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                        <f.icon className="h-5 w-5" />
+                      </span>
+                      <h2 className="text-3xl font-semibold">{f.title}</h2>
+                      <p className="leading-relaxed text-muted">{f.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-16 rounded-4xl border bg-surface/50 p-8 sm:p-12">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-crimson/15 text-crimson ring-1 ring-crimson/30">
+                  <I.popcorn className="h-5 w-5" />
+                </span>
+                <h2 className="mt-5 text-3xl font-semibold">Snacks & concessions</h2>
+                <p className="mt-2 text-sm text-muted">
+                  Made fresh in-house. Order at the counter or from your VIP seat.
+                </p>
+                <div className="mt-8 grid gap-x-12 gap-y-4 sm:grid-cols-2">
+                  {MENU.map(([name, price]) => (
+                    <div key={name} className="flex items-baseline justify-between gap-4 border-b border-dashed pb-3">
+                      <span className="text-sm">{name}</span>
+                      <span className="text-sm font-medium text-cyan">{price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
+         11. PAGE — LOCATION
+         ============================================================ */
+      const DIRECTIONS = [
+        {
+          icon: I.landmark,
+          title: "Landmarks",
+          body: "We're on the CMC main road, directly next to Century Mall and two minutes past the CMC St. Michael Church roundabout.",
+        },
+        {
+          icon: I.car,
+          title: "Driving & parking",
+          body: "Free covered parking for 180 cars beneath the building, with valet on Friday and Saturday evenings. Entrance is on the side street behind the mall.",
+        },
+        {
+          icon: I.bus,
+          title: "Public transport",
+          body: "Any CMC-bound minibus or the Megenagna–CMC line stops at Century Mall. From the stop it's a 3-minute walk.",
+        },
+      ];
+      const HOURS = [
+        ["Monday – Thursday", "10:00 – 23:00"],
+        ["Friday", "09:00 – 01:00"],
+        ["Saturday", "09:00 – 01:00"],
+        ["Sunday", "09:00 – 00:00"],
+      ];
+
+      function LocationPage() {
+        return (
+          <div>
+            <section className="relative h-[52vh] min-h-[380px]">
+              <img
+                src={U("1523805009345-7448845a9e53", 2200)}
+                alt="Evening city street outside the cinema"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/20" />
+              <div className="veil absolute inset-0" />
+              <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-end px-5 pb-12 sm:px-8">
+                <p className="text-xs uppercase tracking-[0.2em] text-cyan">Addis Ababa</p>
+                <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">CMC, next to Century Mall</h1>
+              </div>
+            </section>
+
+            <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
+              <div className="grid gap-6 md:grid-cols-3">
+                {DIRECTIONS.map((d) => (
+                  <div key={d.title} className="rounded-3xl border bg-surface/50 p-7">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/15 text-cyan ring-1 ring-cyan/30">
+                      <d.icon />
+                    </span>
+                    <h2 className="mt-5 text-xl font-semibold">{d.title}</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">{d.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border bg-surface/50 p-8">
+                  <h2 className="text-2xl font-semibold">Opening hours</h2>
+                  <ul className="mt-6 space-y-3 text-sm">
+                    {HOURS.map(([d, h]) => (
+                      <li key={d} className="flex justify-between border-b border-dashed pb-3">
+                        <span className="text-muted">{d}</span>
+                        <span className="font-medium">{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-6 flex items-center gap-2 text-xs text-muted">
+                    <I.clock className="h-3.5 w-3.5" /> Box office closes 30 minutes after the last
+                    screening starts.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                  <div className="rounded-3xl border bg-surface/50 p-8">
+                    <h2 className="text-2xl font-semibold">Get in touch</h2>
+                    <div className="mt-5 space-y-4 text-sm">
+                      <p className="flex gap-3">
+                        <span className="mt-0.5 shrink-0 text-cyan"><I.pin /></span>
+                        <span className="text-muted">
+                          Gast Cinema, CMC Area, Next to Century Mall, Addis Ababa, Ethiopia
+                        </span>
+                      </p>
+                      <p className="flex gap-3">
+                        <span className="mt-0.5 shrink-0 text-cyan"><I.phone /></span>
+                        <a href="tel:+251930113388" className="hover:text-cyan">+251 930 113388</a>
+                      </p>
+                    </div>
+                    <a
+                      href="https://maps.google.com/?q=Century+Mall+CMC+Addis+Ababa"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="glow-cyan mt-6 inline-flex rounded-full bg-cyan px-5 py-2.5 text-sm font-semibold text-black"
+                    >
+                      Open in Maps
+                    </a>
+                  </div>
+                  <div className="overflow-hidden rounded-3xl border">
+                    <img
+                      src={U("1524661135-423995f22d0b", 1400)}
+                      alt="Aerial view of the CMC neighbourhood"
+                      loading="lazy"
+                      className="h-56 w-full object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
+         12. 404 + APP SHELL
+         ============================================================ */
+      function NotFound() {
+        return (
+          <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+            <h1 className="text-7xl font-bold">404</h1>
+            <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
+            <p className="mt-2 text-sm text-muted">That screening doesn't exist or has been moved.</p>
+            <Link to="/" className="mt-6 rounded-full bg-cyan px-4 py-2 text-sm font-medium text-black">
+              Go home
+            </Link>
+          </div>
+        );
+      }
+
+      function Routes() {
+        const { path } = useRouter();
+        if (path === "/") return <HomePage />;
+        if (path === "/schedule") return <SchedulePage />;
+        if (path === "/experience") return <ExperiencePage />;
+        if (path === "/location") return <LocationPage />;
+        if (path.startsWith("/movies/")) return <MoviePage id={path.split("/movies/")[1]} />;
+        return <NotFound />;
+      }
+
+      function App() {
+        return (
+          <RouterProvider>
+            <BookingProvider>
+              <div className="flex min-h-screen flex-col bg-black">
+                <Header />
+                <main className="flex-1"><Routes /></main>
+                <Footer />
+              </div>
+            </BookingProvider>
+          </RouterProvider>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
 </html>
 
