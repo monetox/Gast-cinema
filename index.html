@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineWorld - Complete Cinema App</title>
+  
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #e11d48;
+      --accent-hover: #be123c;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --seat-available: #334155;
+      --seat-selected: #22c55e;
+      --seat-occupied: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-main); color: var(--text); }
+
+    /* Navigation */
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #020617; border-bottom: 1px solid #1e293b; sticky: top; }
+    .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); cursor: pointer; }
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .nav-links a { color: var(--text); text-decoration: none; font-weight: 500; cursor: pointer; }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Views / Pages */
+    .page { display: none; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* Movie Grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+    .card { background: var(--bg-card); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+    .card img { width: 100%; height: 300px; object-fit: cover; }
+    .card-body { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .card-btns { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+    /* Buttons */
+    .btn { flex: 1; padding: 0.6rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: center; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #334155; color: white; }
+
+    /* Seat Map Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 100; }
+    .modal.open { display: flex; }
+    .modal-content { background: var(--bg-card); padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%; text-align: center; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
+
+    /* Screen & Seats */
+    .screen { background: #38bdf8; height: 8px; width: 80%; margin: 1rem auto 2rem; box-shadow: 0 3px 10px rgba(56, 189, 248, 0.7); border-radius: 4px; }
+    .seats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 1.5rem; justify-items: center; }
+    .seat { width: 35px; height: 35px; background: var(--seat-available); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+    .seat.selected { background: var(--seat-selected); }
+    .seat.occupied { background: var(--seat-occupied); cursor: not-allowed; }
+
+    /* Video Embed */
+    .video-container iframe { width: 100%; height: 280px; border: none; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="logo" onclick="showPage('home')">🎬 CineWorld</div>
+    <ul class="nav-links">
+      <li><a onclick="showPage('home')">Home</a></li>
+      <li><a onclick="showPage('schedule')">Schedule</a></li>
+      <li><a onclick="showPage('location')">Location</a></li>
+    </ul>
+  </nav>
+
+  <!-- HOME PAGE -->
+  <section id="home" class="page active">
+    <h1>Now Showing</h1>
+    <div id="movie-grid" class="grid"></div>
+  </section>
+
+  <!-- SCHEDULE PAGE -->
+  <section id="schedule" class="page">
+    <h1>Showtimes & Schedule</h1>
+    <p style="margin-top: 1rem; color: var(--text-muted);">Check upcoming showtimes for this week.</p>
+  </section>
+
+  <!-- LOCATION PAGE -->
+  <section id="location" class="page">
+    <h1>Our Location</h1>
+    <p style="margin-top: 1rem; color: var(--text-muted);">Find us at Grand Cinema Plaza, Hall 4.</p>
+  </section>
+
+  <!-- SEAT MAP MODAL -->
+  <div id="booking-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModals()">&times;</span>
+      <h2 id="modal-movie-title">Select Seats</h2>
+      <div class="screen"></div>
+      <div id="seats-container" class="seats-grid"></div>
+      <p id="booking-summary" style="margin-bottom: 1rem; color: var(--text-muted);">Selected: 0 seats ($0)</p>
+      <button class="btn btn-primary" onclick="confirmBooking()">Confirm Reservation</button>
+    </div>
+  </div>
+
+  <!-- TRAILER MODAL -->
+  <div id="trailer-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModals()">&times;</span>
+      <h2>Movie Trailer</h2>
+      <div class="video-container" id="trailer-container" style="margin-top: 1rem;"></div>
+    </div>
+  </div>
+
+  <script>
+    // 1. DATA
+    const movies = [
+      { id: "1", title: "Interstellar", genre: "Sci-Fi", price: 12, trailer: "https://www.youtube.com/embed/zSWdZVtXT7E", image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500" },
+      { id: "2", title: "The Dark Knight", genre: "Action", price: 10, trailer: "https://www.youtube.com/embed/EXeTwQWrcwY", image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500" }
+    ];
+
+    let selectedMovie = null;
+    let selectedSeats = [];
+
+    // 2. ROUTING
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+    // 3. RENDER MOVIES
+    function renderMovies() {
+      const grid = document.getElementById('movie-grid');
+      grid.innerHTML = movies.map(m => `
+        <div class="card">
+          <img src="${m.image}" alt="${m.title}">
+          <div class="card-body">
+            <div>
+              <h3>${m.title}</h3>
+              <p style="color: var(--text-muted);">${m.genre} • $${m.price}</p>
+            </div>
+            <div class="card-btns">
+              <button class="btn btn-secondary" onclick="openTrailer('${m.trailer}')">Trailer</button>
+              <button class="btn btn-primary" onclick="openBooking('${m.id}')">Book</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 4. SEAT MAP LOGIC
+    function openBooking(movieId) {
+      selectedMovie = movies.find(m => m.id === movieId);
+      selectedSeats = [];
+      document.getElementById('modal-movie-title').innerText = `Book: ${selectedMovie.title}`;
+      
+      const seatsContainer = document.getElementById('seats-container');
+      seatsContainer.innerHTML = '';
+
+      for (let i = 1; i <= 18; i++) {
+        const seat = document.createElement('div');
+        seat.className = `seat ${i === 5 || i === 12 ? 'occupied' : ''}`;
+        seat.innerText = i;
+        if (!seat.classList.contains('occupied')) {
+          seat.onclick = () => toggleSeat(seat, i);
+        }
+        seatsContainer.appendChild(seat);
+      }
+
+      updateSummary();
+      document.getElementById('booking-modal').classList.add('open');
+    }
+
+    function toggleSeat(seatEl, seatNum) {
+      if (selectedSeats.includes(seatNum)) {
+        selectedSeats = selectedSeats.filter(s => s !== seatNum);
+        seatEl.classList.remove('selected');
+      } else {
+        selectedSeats.push(seatNum);
+        seatEl.classList.add('selected');
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const total = selectedSeats.length * (selectedMovie ? selectedMovie.price : 0);
+      document.getElementById('booking-summary').innerText = `Selected: ${selectedSeats.length} seats ($${total})`;
+    }
+
+    function confirmBooking() {
+      if (selectedSeats.length === 0) return alert('Please select at least one seat!');
+      alert(`Successfully booked seats [${selectedSeats.join(', ')}] for ${selectedMovie.title}!`);
+      closeModals();
+    }
+
+    // 5. TRAILER MODAL
+    function openTrailer(url) {
+      document.getElementById('trailer-container').innerHTML = `<iframe src="${url}?autoplay=1" allowfullscreen></iframe>`;
+      document.getElementById('trailer-modal').classList.add('open');
+    }
+
+    function closeModals() {
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+      document.getElementById('trailer-container').innerHTML = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', renderMovies);
+  </script>
+</body>
+</html>
+
