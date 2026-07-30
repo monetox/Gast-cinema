@@ -120,8 +120,7 @@
         car: (p) => <Icon {...p} d={<><path d="M5 17h14l-1.5-6.5A2 2 0 0015.6 9H8.4a2 2 0 00-1.9 1.5z" /><circle cx="7.5" cy="17.5" r="1.5" /><circle cx="16.5" cy="17.5" r="1.5" /></>} />,
         bus: (p) => <Icon {...p} d={<><rect x="4" y="4" width="16" height="13" rx="2" /><path d="M4 10h16M7 21v-2M17 21v-2" /></>} />,
         landmark: (p) => <Icon {...p} d={<><path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M12 3l9 5H3z" /></>} />,
-        download: (p) => <Icon {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>} />,
-        fileText: (p) => <Icon {...p} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></>} />,
+        upload: (p) => <Icon {...p} d={<><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>} />,
       };
 
       /* ============================================================
@@ -357,19 +356,12 @@
           );
         }, []);
         const clear = useCallback(() => setSeats([]), []);
-        
-        const confirmCurrentBooking = useCallback(() => {
-          if (!showtimeId || seats.length === 0) return;
-          setBookedSeats((prev) => {
-            const currentShowtimeBooked = prev[showtimeId] || [];
-            const newSeatIds = seats.map((s) => s.id);
-            return {
-              ...prev,
-              [showtimeId]: [...currentShowtimeBooked, ...newSeatIds]
-            };
-          });
-        }, [showtimeId, seats]);
-
+        const confirmBooking = useCallback((showtimeKey, bookedSeatIds) => {
+          setBookedSeats((prev) => ({
+            ...prev,
+            [showtimeKey]: [...(prev[showtimeKey] || []), ...bookedSeatIds],
+          }));
+        }, []);
         const total = useMemo(
           () => seats.reduce((sum, s) => sum + (s.vip ? PRICE_VIP : PRICE_STANDARD), 0),
           [seats]
@@ -377,18 +369,7 @@
 
         return (
           <BookingCtx.Provider
-            value={{ 
-              movieId, 
-              showtimeId, 
-              seats, 
-              total, 
-              bookedSeats,
-              setMovie, 
-              setShowtime, 
-              toggleSeat, 
-              clear,
-              confirmCurrentBooking
-            }}
+            value={{ movieId, showtimeId, seats, total, bookedSeats, setMovie, setShowtime, toggleSeat, clear, confirmBooking }}
           >
             {children}
           </BookingCtx.Provider>
@@ -744,7 +725,10 @@
         const { seats, toggleSeat, bookedSeats } = useBooking();
         const isSelected = (id) => seats.some((s) => s.id === id);
 
-        const currentShowtimeBooked = bookedSeats[showtimeId] || [];
+        const checkOccupied = (id) => {
+          const userBooked = (bookedSeats[showtimeId] || []).includes(id);
+          return userBooked || isOccupiedDefault(showtimeId + "-" + id);
+        };
 
         const row = (r, cols, vip) => (
           <div key={r} className="flex items-center justify-center gap-1.5 sm:gap-2">
@@ -752,11 +736,8 @@
             <div className={cn("flex gap-1.5 sm:gap-2", !vip && "flex-wrap justify-center")}>
               {Array.from({ length: cols }).map((_, i) => {
                 const id = r + (i + 1);
-                const defaultOccupied = isOccupiedDefault(showtimeId + "-" + id);
-                const userBooked = currentShowtimeBooked.includes(id);
-                const occupied = defaultOccupied || userBooked;
+                const occupied = checkOccupied(id);
                 const selected = isSelected(id);
-                
                 return (
                   <button
                     key={id}
@@ -766,8 +747,7 @@
                     className={cn(
                       "rounded-md text-[9px] font-medium transition-all duration-150",
                       vip ? "h-7 w-10 rounded-lg sm:w-12" : "h-6 w-6 sm:h-7 sm:w-7",
-                      userBooked && "cursor-not-allowed bg-crimson text-white font-bold border border-crimson/50 shadow-sm shadow-crimson/50",
-                      defaultOccupied && !userBooked && "cursor-not-allowed bg-white/5 text-white/15",
+                      occupied && "cursor-not-allowed bg-crimson/80 text-white shadow-sm opacity-90",
                       !occupied && !selected &&
                         (vip
                           ? "bg-crimson/10 text-crimson/80 hover:bg-crimson/20"
@@ -775,7 +755,7 @@
                       selected && "glow-cyan bg-cyan text-black"
                     )}
                   >
-                    {occupied ? (userBooked ? "✕" : "") : i + 1}
+                    {occupied ? "" : i + 1}
                   </button>
                 );
               })}
@@ -802,8 +782,7 @@
             <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 pt-5 text-[11px] text-muted">
               <Legend cls="bg-surface2" label="Available" />
               <Legend cls="bg-cyan" label="Selected" />
-              <Legend cls="bg-white/5" label="Unavailable" />
-              <Legend cls="bg-crimson border border-crimson/50" label="Your Booked Seats (Red)" />
+              <Legend cls="bg-crimson/80" label="Occupied / Booked" />
               <Legend cls="bg-crimson/20" label="VIP couch · 600 ETB" />
             </div>
           </div>
@@ -916,10 +895,12 @@
          ============================================================ */
       function MoviePage({ id }) {
         const movie = getMovie(id);
-        const { seats, total, showtimeId, setMovie, setShowtime, clear, confirmCurrentBooking } = useBooking();
-        const [confirmed, setConfirmed] = useState(false);
+        const { seats, total, showtimeId, setMovie, setShowtime, clear, confirmBooking } = useBooking();
+        const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+        const [receiptFile, setReceiptFile] = useState(null);
+        const [isSuccess, setIsSuccess] = useState(false);
+        const [uploadError, setUploadError] = useState("");
         const [showTrailer, setShowTrailer] = useState(false);
-        const [receiptRef, setReceiptRef] = useState("");
 
         useEffect(() => { if (movie) setMovie(movie.id); }, [movie && movie.id]);
 
@@ -927,52 +908,31 @@
         const active = movie.showtimes.find((s) => s.id === showtimeId) || null;
         const related = MOVIES.filter((m) => m.id !== movie.id).slice(0, 4);
 
-        const standardSeatsCount = seats.filter(s => !s.vip).length;
-        const vipSeatsCount = seats.filter(s => s.vip).length;
-
-        const handleConfirmBooking = () => {
-          const ref = "GC-" + active.id.toUpperCase() + "-" + Math.floor(1000 + Math.random() * 9000);
-          setReceiptRef(ref);
-          confirmCurrentBooking();
-          setConfirmed(true);
+        const handleFileChange = (e) => {
+          if (e.target.files && e.target.files[0]) {
+            setReceiptFile(e.target.files[0]);
+            setUploadError("");
+          }
         };
 
-        const downloadReceipt = () => {
-          const content = `====================================
-           GAST CINEMA
-      CMC Area, Next to Century Mall
-          Addis Ababa, Ethiopia
-====================================
-RECEIPT REF: ${receiptRef}
-DATE: ${new Date().toLocaleString()}
-------------------------------------
-FILM: ${movie.title}
-SHOWTIME: ${active.time}
-HALL/FORMAT: ${active.hall} (${active.format})
+        const handleFinalConfirm = (e) => {
+          e.preventDefault();
+          if (!receiptFile) {
+            setUploadError("Please upload a receipt before confirming payment.");
+            return;
+          }
+          confirmBooking(active.id, seats.map((s) => s.id));
+          setIsSuccess(true);
+        };
 
-SEATS BOOKED:
-${seats.map(s => `- Seat ${s.id} (${s.vip ? 'VIP Couch - 600 ETB' : 'Standard - 300 ETB'})`).join('\n')}
-
-BREAKDOWN:
-- Standard Seats (${standardSeatsCount}): ${(standardSeatsCount * PRICE_STANDARD).toLocaleString()} ETB
-- VIP Couches (${vipSeatsCount}): ${(vipSeatsCount * PRICE_VIP).toLocaleString()} ETB
-------------------------------------
-TOTAL PAID: ${total.toLocaleString()} ETB
-PAYMENT METHOD: Digital Payment / Mobile Wallet
-STATUS: PAID & CONFIRMED
-====================================
-Thank you for choosing Gast Cinema!
-Present this receipt or reference code at entry.`;
-
-          const blob = new Blob([content], { type: "text/plain" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `Receipt_${receiptRef}.txt`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+        const handleCloseModal = () => {
+          setIsBookingModalOpen(false);
+          setReceiptFile(null);
+          setIsSuccess(false);
+          setUploadError("");
+          if (isSuccess) {
+            clear();
+          }
         };
 
         return (
@@ -1129,105 +1089,98 @@ Present this receipt or reference code at entry.`;
               </FadeIn>
             </section>
 
-            {seats.length > 0 && active && !confirmed && (
+            {seats.length > 0 && active && (
               <div className="fixed inset-x-0 bottom-0 z-50 p-4">
                 <div className="glass mx-auto flex max-w-3xl flex-wrap items-center gap-4 rounded-2xl p-4 shadow-2xl">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {seats.length} seat{seats.length > 1 ? "s" : ""} · {seats.map((s) => s.id).join(", ")}
                     </p>
-                    <p className="text-xs text-muted">
-                      {movie.title} · {active.time} · {active.hall}
-                      {standardSeatsCount > 0 && ` (${standardSeatsCount} Standard @ 300 ETB)`}
-                      {vipSeatsCount > 0 && ` (${vipSeatsCount} VIP @ 600 ETB)`}
-                    </p>
+                    <p className="text-xs text-muted">{movie.title} · {active.time} · {active.hall}</p>
                   </div>
                   <p className="text-xl font-semibold text-cyan">{total.toLocaleString()} ETB</p>
                   <button onClick={clear} className="rounded-full px-3 py-2 text-xs text-muted hover:text-white">
                     Clear
                   </button>
                   <button
-                    onClick={handleConfirmBooking}
+                    onClick={() => setIsBookingModalOpen(true)}
                     className="glow-cyan rounded-full bg-cyan px-5 py-2.5 text-sm font-semibold text-black"
                   >
-                    Confirm & Book
+                    Proceed to Payment
                   </button>
                 </div>
               </div>
             )}
 
-            {confirmed && active && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 sm:p-6 backdrop-blur-md overflow-y-auto">
-                <div className="w-full max-w-md rounded-3xl bg-surface border border-white/10 p-6 sm:p-8 text-center my-8 max-h-[90vh] overflow-y-auto">
-                  <button aria-label="Close" onClick={() => { setConfirmed(false); clear(); }} className="ml-auto block text-muted hover:text-white">
+            {isBookingModalOpen && active && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-5 backdrop-blur-md">
+                <div className="w-full max-w-md rounded-3xl bg-surface p-8 text-center border border-white/10 relative">
+                  <button aria-label="Close" onClick={handleCloseModal} className="absolute top-6 right-6 text-muted hover:text-white">
                     <I.x />
                   </button>
-                  
-                  <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan/15 text-cyan">
-                    <I.check className="h-6 w-6" />
-                  </span>
-                  
-                  <h3 className="mt-3 text-2xl font-semibold">Booking Confirmed!</h3>
-                  <p className="mt-1 text-xs text-muted">Your seats are now locked and reserved (marked red on map).</p>
 
-                  {/* DIGITAL RECEIPT ATTACHMENT WIDGET */}
-                  <div className="mt-6 rounded-2xl bg-zinc950 border border-cyan/20 p-5 text-left text-xs space-y-3">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="p-2 rounded-lg bg-cyan/10 text-cyan">
-                          <I.fileText className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <p className="font-semibold text-sm text-white">Gast_Cinema_Receipt.pdf</p>
-                          <p className="text-[10px] text-muted">Official Payment Attachment</p>
-                        </div>
+                  {!isSuccess ? (
+                    <form onSubmit={handleFinalConfirm} className="text-left">
+                      <h3 className="text-2xl font-semibold text-center">Complete Your Booking</h3>
+                      <p className="mt-2 text-sm text-muted text-center">{movie.title} · {active.time} · {active.hall}</p>
+                      
+                      <div className="mt-6 space-y-2 rounded-2xl bg-black/40 p-4 text-sm">
+                        <Row label="Seats" value={seats.map((s) => `${s.id} (${s.vip ? 'VIP' : 'Standard'})`).join(", ")} />
+                        <Row label="Price breakdown" value={`${seats.filter(s => !s.vip).length} Std @ 300 ETB, ${seats.filter(s => s.vip).length} VIP @ 600 ETB`} />
+                        <Row label="Total due" value={<span className="text-cyan font-semibold">{total.toLocaleString()} ETB</span>} />
+                        <Row label="Payment account" value="CBE: 1000293848123 (Gast Cinema)" />
                       </div>
+
+                      <div className="mt-6">
+                        <label className="block text-xs font-medium uppercase tracking-wider text-muted mb-2">
+                          Upload Payment Receipt (Required)
+                        </label>
+                        <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-surface2 p-5 text-center hover:border-cyan/50 transition-colors">
+                          <I.upload className="h-8 w-8 text-cyan mb-2" />
+                          <span className="text-xs text-muted">
+                            {receiptFile ? receiptFile.name : "Click to select or drop receipt image/PDF"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                          />
+                        </div>
+                        {uploadError && <p className="mt-2 text-xs text-crimson">{uploadError}</p>}
+                      </div>
+
                       <button
-                        onClick={downloadReceipt}
-                        title="Download Receipt TXT"
-                        className="flex items-center gap-1 rounded-lg bg-cyan/10 px-2.5 py-1.5 text-[11px] font-semibold text-cyan hover:bg-cyan/20 transition-colors"
+                        type="submit"
+                        className="glow-cyan mt-6 w-full rounded-full bg-cyan py-3 text-sm font-semibold text-black transition-transform hover:scale-[1.02]"
                       >
-                        <I.download className="h-3.5 w-3.5" /> Download
+                        Submit Receipt & Confirm
+                      </button>
+                    </form>
+                  ) : (
+                    <div>
+                      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-cyan/15 text-cyan">
+                        <I.check className="h-6 w-6" />
+                      </span>
+                      <h3 className="mt-5 text-2xl font-semibold">Receipt Verified & Booked</h3>
+                      <p className="mt-2 text-sm text-muted">Your seats have been successfully reserved and marked as occupied.</p>
+                      <div className="mt-6 space-y-2 rounded-2xl bg-black/40 p-4 text-left text-sm">
+                        <Row label="Seats" value={seats.map((s) => s.id).join(", ")} />
+                        <Row label="Total Paid" value={total.toLocaleString() + " ETB"} />
+                        <Row label="Receipt" value={receiptFile ? receiptFile.name : "Attached"} />
+                        <Row label="Venue" value="Gast Cinema, CMC Addis Ababa" />
+                      </div>
+                      <p className="mt-5 flex items-center justify-center gap-2 text-xs text-muted">
+                        <I.ticket className="h-3.5 w-3.5" /> Reference: GC-{active.id.toUpperCase()}-{seats.length}
+                      </p>
+                      <button
+                        onClick={handleCloseModal}
+                        className="mt-6 w-full rounded-full bg-cyan py-3 text-sm font-semibold text-black"
+                      >
+                        Done
                       </button>
                     </div>
-
-                    <div className="space-y-2 pt-1">
-                      <Row label="Receipt #" value={receiptRef} />
-                      <Row label="Film" value={movie.title} />
-                      <Row label="Screening" value={`${active.time} · ${active.hall}`} />
-                      <Row label="Seats" value={seats.map((s) => `${s.id} (${s.vip ? 'VIP 600 ETB' : 'Standard 300 ETB'})`).join(", ")} />
-                      
-                      <div className="border-t border-dashed border-white/10 pt-2">
-                        {standardSeatsCount > 0 && (
-                          <div className="flex justify-between text-muted my-0.5">
-                            <span>Standard Seats ({standardSeatsCount} × 300)</span>
-                            <span>{(standardSeatsCount * PRICE_STANDARD).toLocaleString()} ETB</span>
-                          </div>
-                        )}
-                        {vipSeatsCount > 0 && (
-                          <div className="flex justify-between text-muted my-0.5">
-                            <span>VIP Couches ({vipSeatsCount} × 600)</span>
-                            <span>{(vipSeatsCount * PRICE_VIP).toLocaleString()} ETB</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-semibold text-cyan text-sm mt-2 border-t border-white/10 pt-2">
-                          <span>Total Amount Paid:</span>
-                          <span>{total.toLocaleString()} ETB</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="mt-4 text-[11px] text-muted">
-                    Please present this receipt reference at the Gast Cinema box office or entrance scanner.
-                  </p>
-
-                  <button
-                    onClick={() => { setConfirmed(false); clear(); }}
-                    className="mt-6 w-full rounded-full bg-cyan py-3 text-sm font-semibold text-black hover:bg-cyan/90 transition-colors"
-                  >
-                    Done
-                  </button>
+                  )}
                 </div>
               </div>
             )}
